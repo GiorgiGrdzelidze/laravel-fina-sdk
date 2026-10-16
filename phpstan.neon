@@ -17,7 +17,5 @@ parameters:
         -
             identifier: notIdentical.alwaysTrue
         -
-            identifier: nullCoalesce.offset
-        -
             identifier: argument.type
             path: src/Operation/ProductsApi.php
