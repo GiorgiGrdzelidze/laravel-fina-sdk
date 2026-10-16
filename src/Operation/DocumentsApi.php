@@ -213,6 +213,12 @@ final class DocumentsApi extends BaseApi
         return $this->getDoc('getDocProductOut', $id);
     }
 
+    /** Retrieve a retail product-out document (raw, `product_out_single`). */
+    public function getProductOutSingle(int $id): array
+    {
+        return $this->getDoc('getDocProductOutSingle', $id);
+    }
+
     /** Retrieve a product move document (raw). */
     public function getProductMove(int $id): array
     {

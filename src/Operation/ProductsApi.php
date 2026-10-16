@@ -121,6 +121,16 @@ final class ProductsApi extends BaseApi
     }
 
     /**
+     * GET api/operation/getProductsRest
+     * Current rest of every product for every store.
+     * Response: { "rest": [{ "id": int, "store": int, "rest": decimal, "reserve": decimal }], "ex": null }
+     */
+    public function rest(): array
+    {
+        return $this->get('getProductsRest', [], 'operation.getProductsRest returned ex');
+    }
+
+    /**
      * POST api/operation/getProductsRestArray
      * Request body: { "prods": int[] }
      */

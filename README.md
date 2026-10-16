@@ -43,7 +43,7 @@ This release adds **18 new endpoints** and expands several existing ones:
 |---|---|
 | **Customers** | Agreements, sub-account fields, sub-accounts |
 | **Vendors** | Sub-accounts |
-| **Products** | Rest-after-date, rest summary, rest by store, provided service prices |
+| **Products** | Current rest, rest-after-date, rest summary, rest by store, provided service prices |
 | **Loyalty** | Gift card info by code, bonus card rest by code |
 | **Reference** | Transportation means, account value details |
 | **Documents** | Save received service, bonus card, gift payment; get/save auto-service docs |
@@ -248,6 +248,7 @@ Access via `$fina->products()`.
 | `characteristics()` | `getCharacteristics` | `array` |
 | `imagesByProductIds($ids)` | `getProductsImageArray` (POST) | `array` |
 | `barcodesByProductIds($ids)` | `getProductsBarcodeArray` (POST) | `array` |
+| `rest()` | `getProductsRest` | `array` |
 | `restByProductIds($ids)` | `getProductsRestArray` (POST) | `array` |
 | `restAfter($date)` | `getProductsRestAfter/{date}` | `array` |
 | `restSummary($prods, $stores, $date)` | `getProductsRestSummary` (POST) | `array` |
@@ -352,6 +353,7 @@ Access via `$fina->documents()`.
 |---|---|---|
 | `getCustomerOrder($id)` | `getDocCustomerOrder/{id}` | `array` |
 | `getProductOut($id)` | `getDocProductOut/{id}` | `array` |
+| `getProductOutSingle($id)` | `getDocProductOutSingle/{id}` | `array` |
 | `getProductMove($id)` | `getDocProductMove/{id}` | `array` |
 | `getReceivedService($id)` | `getDocReceivedService/{id}` | `array` |
 | `getCustomerReturn($id)` | `getDocCustomerReturn/{id}` | `array` |
