@@ -20,12 +20,15 @@ use Fina\Sdk\Laravel\Reporting\Dto\CycleReportResponseDto;
 use Fina\Sdk\Laravel\Reporting\Dto\DiscountCardsJournalResponseDto;
 use Fina\Sdk\Laravel\Reporting\Dto\EntriesJournalResponseDto;
 use Fina\Sdk\Laravel\Reporting\Dto\MoneyJournalResponseDto;
+use Fina\Sdk\Laravel\Reporting\Dto\MovesJournalResponseDto;
 use Fina\Sdk\Laravel\Reporting\Dto\ProductionsJournalResponseDto;
 use Fina\Sdk\Laravel\Reporting\Dto\ProductsInReturnReportResponseDto;
 use Fina\Sdk\Laravel\Reporting\Dto\ProductsLastInReportResponseDto;
 use Fina\Sdk\Laravel\Reporting\Dto\ProvidedServicesJournalResponseDto;
+use Fina\Sdk\Laravel\Reporting\Dto\RealizesJournalResponseDto;
 use Fina\Sdk\Laravel\Reporting\Dto\ReceivedServicesJournalResponseDto;
 use Fina\Sdk\Laravel\Support\FinaDate;
+use InvalidArgumentException;
 
 /**
  * Provides raw, typed, and chunked access to all FINA Reporting API endpoints.
@@ -75,7 +78,11 @@ final class ReportingApi extends BaseApi
         $start = CarbonImmutable::instance($from)->startOfDay();
         $end = CarbonImmutable::instance($to);
 
-        $seen = [];
+        if ($chunkDays < 1) {
+            throw new InvalidArgumentException('chunkDays must be at least 1');
+        }
+
+        $seenInEarlierChunks = [];
         $all = [];
         $last = null;
 
@@ -86,6 +93,13 @@ final class ReportingApi extends BaseApi
             $resp = $this->getRange($method, $chunkFrom, $chunkTo);
             $last = $resp;
 
+            // A key is an OPERATION, not a row: getEntriesJournal returns one row
+            // per entry line and every line of an operation carries the same
+            // id + version. Rows are only dropped when their operation was already
+            // delivered by an earlier chunk (window boundaries overlap by design);
+            // inside one chunk every row is kept.
+            $seenInThisChunk = [];
+
             $items = (array) ($resp[$collectionKey] ?? []);
             foreach ($items as $item) {
                 $itemArr = (array) $item;
@@ -94,11 +108,15 @@ final class ReportingApi extends BaseApi
                     ? (string) $dedupeKeyFn($itemArr)
                     : $this->defaultDedupeKey($itemArr);
 
-                if (! isset($seen[$key])) {
-                    $seen[$key] = true;
-                    $all[] = $itemArr;
+                if (isset($seenInEarlierChunks[$key])) {
+                    continue;
                 }
+
+                $seenInThisChunk[$key] = true;
+                $all[] = $itemArr;
             }
+
+            $seenInEarlierChunks += $seenInThisChunk;
         }
 
         return [
@@ -185,6 +203,12 @@ final class ReportingApi extends BaseApi
         return $this->getRange('getRealizesJournal', $from, $to);
     }
 
+    /** getMovesJournal (raw) */
+    public function movesJournal(DateTimeInterface $from, DateTimeInterface $to): array
+    {
+        return $this->getRange('getMovesJournal', $from, $to);
+    }
+
     /** getAutoServicesOutJournal (raw, v8.0) */
     public function autoServicesOutJournal(DateTimeInterface $from, DateTimeInterface $to): array
     {
@@ -199,6 +223,18 @@ final class ReportingApi extends BaseApi
     public function entriesJournalChunked(DateTimeInterface $from, DateTimeInterface $to, int $chunkDays = 7): array
     {
         return $this->getRangeChunked('getEntriesJournal', 'journals', $from, $to, $chunkDays);
+    }
+
+    /** getRealizesJournal (chunked, deduplicated) */
+    public function realizesJournalChunked(DateTimeInterface $from, DateTimeInterface $to, int $chunkDays = 14): array
+    {
+        return $this->getRangeChunked('getRealizesJournal', 'journals', $from, $to, $chunkDays);
+    }
+
+    /** getMovesJournal (chunked, deduplicated) */
+    public function movesJournalChunked(DateTimeInterface $from, DateTimeInterface $to, int $chunkDays = 14): array
+    {
+        return $this->getRangeChunked('getMovesJournal', 'journals', $from, $to, $chunkDays);
     }
 
     /** getCustomersMoneyJournal (chunked, deduplicated) */
@@ -428,6 +464,42 @@ final class ReportingApi extends BaseApi
     {
         return ReceivedServicesJournalResponseDto::fromArray(
             $this->getRangeChunked('getDocReceivedServicesJournal', 'journals', $from, $to, $chunkDays)
+        );
+    }
+
+    // ---------------------------------------------------------------------
+    // Typed: Realizes + Moves journals
+    // ---------------------------------------------------------------------
+
+    /** getRealizesJournal (typed). */
+    public function realizesJournalTyped(DateTimeInterface $from, DateTimeInterface $to): RealizesJournalResponseDto
+    {
+        return RealizesJournalResponseDto::fromArray(
+            $this->getRange('getRealizesJournal', $from, $to)
+        );
+    }
+
+    /** getRealizesJournal (chunked + typed). */
+    public function realizesJournalChunkedTyped(DateTimeInterface $from, DateTimeInterface $to, int $chunkDays = 14): RealizesJournalResponseDto
+    {
+        return RealizesJournalResponseDto::fromArray(
+            $this->getRangeChunked('getRealizesJournal', 'journals', $from, $to, $chunkDays)
+        );
+    }
+
+    /** getMovesJournal (typed). */
+    public function movesJournalTyped(DateTimeInterface $from, DateTimeInterface $to): MovesJournalResponseDto
+    {
+        return MovesJournalResponseDto::fromArray(
+            $this->getRange('getMovesJournal', $from, $to)
+        );
+    }
+
+    /** getMovesJournal (chunked + typed). */
+    public function movesJournalChunkedTyped(DateTimeInterface $from, DateTimeInterface $to, int $chunkDays = 14): MovesJournalResponseDto
+    {
+        return MovesJournalResponseDto::fromArray(
+            $this->getRangeChunked('getMovesJournal', 'journals', $from, $to, $chunkDays)
         );
     }
 

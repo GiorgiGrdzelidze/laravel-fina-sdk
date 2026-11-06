@@ -8,6 +8,9 @@ declare(strict_types=1);
 
 namespace Fina\Sdk\Laravel\Reporting\Dto;
 
+/**
+ * getDocReceivedServicesJournal -> journals[] row (doc_type 28).
+ */
 final class ReceivedServicesJournalRowDto
 {
     public function __construct(
@@ -16,11 +19,12 @@ final class ReceivedServicesJournalRowDto
         public readonly string $date,
         public readonly string $docNum,
         public readonly int $docType,
-        public readonly int $vendorId,
-        public readonly string $vendorName,
-        public readonly float $amount,
-        public readonly string $currency,
         public readonly string $purpose,
+        public readonly float $amount,
+        public readonly int $staffId,
+        public readonly string $currency,
+        public readonly int $vendorId,
+        public readonly int $payType,
         public readonly array $raw = [],
     ) {}
 
@@ -30,13 +34,14 @@ final class ReceivedServicesJournalRowDto
             id: (int) ($row['id'] ?? 0),
             version: (string) ($row['version'] ?? ''),
             date: (string) ($row['date'] ?? ''),
-            docNum: (string) ($row['doc_num'] ?? ($row['docNum'] ?? '')),
-            docType: (int) ($row['doc_type'] ?? ($row['docType'] ?? 0)),
-            vendorId: (int) ($row['vendor_id'] ?? 0),
-            vendorName: (string) ($row['vendor_name'] ?? ($row['vendor'] ?? '')),
-            amount: (float) ($row['amount'] ?? 0.0),
-            currency: (string) ($row['currency'] ?? ''),
+            docNum: (string) ($row['doc_num'] ?? ''),
+            docType: (int) ($row['doc_type'] ?? 0),
             purpose: (string) ($row['purpose'] ?? ''),
+            amount: (float) ($row['amount'] ?? 0.0),
+            staffId: (int) ($row['staff_id'] ?? 0),
+            currency: (string) ($row['currency'] ?? ''),
+            vendorId: (int) ($row['vendor_id'] ?? 0),
+            payType: (int) ($row['pay_type'] ?? 0),
             raw: $row,
         );
     }
@@ -49,11 +54,12 @@ final class ReceivedServicesJournalRowDto
             'date' => $this->date,
             'doc_num' => $this->docNum,
             'doc_type' => $this->docType,
-            'vendor_id' => $this->vendorId,
-            'vendor_name' => $this->vendorName,
-            'amount' => $this->amount,
-            'currency' => $this->currency,
             'purpose' => $this->purpose,
+            'amount' => $this->amount,
+            'staff_id' => $this->staffId,
+            'currency' => $this->currency,
+            'vendor_id' => $this->vendorId,
+            'pay_type' => $this->payType,
             'raw' => $this->raw,
         ];
     }

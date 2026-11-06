@@ -13,7 +13,13 @@ use Fina\Sdk\Laravel\Contracts\ArrayPayload;
 use Fina\Sdk\Laravel\Contracts\ValidatesPayload;
 use Fina\Sdk\Laravel\Endpoints\BaseApi;
 use Fina\Sdk\Laravel\Operation\Dto\AutoServiceDocDto;
+use Fina\Sdk\Laravel\Operation\Dto\Documents\CustomerOrderDocDto;
+use Fina\Sdk\Laravel\Operation\Dto\Documents\CustomerReturnDocDto;
+use Fina\Sdk\Laravel\Operation\Dto\Documents\ProductMoveDocDto;
+use Fina\Sdk\Laravel\Operation\Dto\Documents\ProductOutDocDto;
+use Fina\Sdk\Laravel\Operation\Dto\Documents\ProductOutSingleDocDto;
 use Fina\Sdk\Laravel\Operation\Dto\Production\ProductionDocDto;
+use Fina\Sdk\Laravel\Operation\Dto\RsStatusResponse;
 use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
 use Fina\Sdk\Laravel\Support\PayloadValidator;
 
@@ -197,6 +203,39 @@ final class DocumentsApi extends BaseApi
         return $this->save('saveDocGiftPayment', $payload);
     }
 
+    // ---- Card issuance docs ----
+
+    /** Save a discount card issuance document (saveDocDiscountCard). */
+    public function saveDiscountCard(ArrayPayload|array $payload): SaveDocResponse
+    {
+        return $this->save('saveDocDiscountCard', $payload);
+    }
+
+    /** Save a gift card issuance document (saveDocGiftCard, insert only). */
+    public function saveGiftCard(ArrayPayload|array $payload): SaveDocResponse
+    {
+        return $this->save('saveDocGiftCard', $payload);
+    }
+
+    // ---- RS.ge waybill status ----
+
+    /**
+     * POST api/operation/updateRsStatus
+     * Request: {id (FINA operation id), w_id (RS waybill id), w_status, w_num}
+     * Response: {status, ex}
+     */
+    public function updateRsStatus(int $operationId, int $waybillId, int $waybillStatus, string $waybillNum): RsStatusResponse
+    {
+        $data = $this->post('updateRsStatus', [
+            'id' => $operationId,
+            'w_id' => $waybillId,
+            'w_status' => $waybillStatus,
+            'w_num' => $waybillNum,
+        ], 'operation.updateRsStatus returned ex');
+
+        return RsStatusResponse::fromArray($data);
+    }
+
     // -----------------------
     // getDoc* wrappers (raw)
     // -----------------------
@@ -207,10 +246,26 @@ final class DocumentsApi extends BaseApi
         return $this->getDoc('getDocCustomerOrder', $id);
     }
 
+    /** Retrieve a customer order document as a typed DTO (`customer_order`). */
+    public function getCustomerOrderTyped(int $id): CustomerOrderDocDto
+    {
+        $data = $this->getDoc('getDocCustomerOrder', $id);
+
+        return CustomerOrderDocDto::fromArray((array) ($data['customer_order'] ?? []));
+    }
+
     /** Retrieve a product-out document (raw). */
     public function getProductOut(int $id): array
     {
         return $this->getDoc('getDocProductOut', $id);
+    }
+
+    /** Retrieve a product-out document as a typed DTO (`product_out`, doc type 21). */
+    public function getProductOutTyped(int $id): ProductOutDocDto
+    {
+        $data = $this->getDoc('getDocProductOut', $id);
+
+        return ProductOutDocDto::fromArray((array) ($data['product_out'] ?? []));
     }
 
     /** Retrieve a retail product-out document (raw, `product_out_single`). */
@@ -219,10 +274,50 @@ final class DocumentsApi extends BaseApi
         return $this->getDoc('getDocProductOutSingle', $id);
     }
 
+    /** Retrieve a retail product-out document as a typed DTO (`product_out_single`, doc type 23). */
+    public function getProductOutSingleTyped(int $id): ProductOutSingleDocDto
+    {
+        $data = $this->getDoc('getDocProductOutSingle', $id);
+
+        return ProductOutSingleDocDto::fromArray((array) ($data['product_out_single'] ?? []));
+    }
+
     /** Retrieve a product move document (raw). */
     public function getProductMove(int $id): array
     {
         return $this->getDoc('getDocProductMove', $id);
+    }
+
+    /** Retrieve a product move document as a typed DTO (`product_move`, doc type 20). */
+    public function getProductMoveTyped(int $id): ProductMoveDocDto
+    {
+        $data = $this->getDoc('getDocProductMove', $id);
+
+        return ProductMoveDocDto::fromArray((array) ($data['product_move'] ?? []));
+    }
+
+    /** Retrieve a fixed-asset sale document (raw, `inventory_out`). */
+    public function getInventoryOut(int $id): array
+    {
+        return $this->getDoc('getDocInventoryOut', $id);
+    }
+
+    /** Retrieve a fixed-asset move document (raw, `inventory_move`). */
+    public function getInventoryMove(int $id): array
+    {
+        return $this->getDoc('getDocInventoryMove', $id);
+    }
+
+    /** Retrieve a fixed-asset return from a customer (raw, `customer_inventory_return`). */
+    public function getCustomerInventoryReturn(int $id): array
+    {
+        return $this->getDoc('getDocCustomerInventoryReturn', $id);
+    }
+
+    /** Retrieve a provided service document (raw, `doc_providedservice`). */
+    public function getProvidedService(int $id): array
+    {
+        return $this->getDoc('getDocProvidedService', $id);
     }
 
     /** Retrieve a received service document (raw). */
@@ -235,6 +330,20 @@ final class DocumentsApi extends BaseApi
     public function getCustomerReturn(int $id): array
     {
         return $this->getDoc('getDocCustomerReturn', $id);
+    }
+
+    /** Retrieve a customer return document as a typed DTO (`customer_return`, doc type 9). */
+    public function getCustomerReturnTyped(int $id): CustomerReturnDocDto
+    {
+        $data = $this->getDoc('getDocCustomerReturn', $id);
+
+        return CustomerReturnDocDto::fromArray((array) ($data['customer_return'] ?? []));
+    }
+
+    /** Retrieve an issued discount card document (raw, `discount_card`). */
+    public function getDiscountCard(int $id): array
+    {
+        return $this->getDoc('getDocDiscountCard', $id);
     }
 
     /** Retrieve a production document (raw). */

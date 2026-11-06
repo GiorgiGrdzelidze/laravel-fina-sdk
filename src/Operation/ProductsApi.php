@@ -10,8 +10,13 @@ namespace Fina\Sdk\Laravel\Operation;
 
 use DateTimeInterface;
 use Fina\Sdk\Laravel\Client\FinaClient;
+use Fina\Sdk\Laravel\Contracts\ArrayPayload;
+use Fina\Sdk\Laravel\Contracts\ValidatesPayload;
 use Fina\Sdk\Laravel\Endpoints\BaseApi;
+use Fina\Sdk\Laravel\Operation\Dto\AdditionalFieldDescriptorDto;
+use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
 use Fina\Sdk\Laravel\Support\FinaDate;
+use Fina\Sdk\Laravel\Support\PayloadValidator;
 
 /**
  * Provides methods for retrieving product data, prices, units, characteristics,
@@ -185,5 +190,168 @@ final class ProductsApi extends BaseApi
     public function providedServicePrices(): array
     {
         return $this->get('getProvidedServicePrices', [], 'operation.getProvidedServicePrices returned ex');
+    }
+
+    /**
+     * GET api/operation/getProductsRestByStore/{store}
+     * Response: { "store_rest": [{ "id": int, "rest": decimal }], "ex": null }
+     */
+    public function restByStore(int $store): array
+    {
+        return $this->get("getProductsRestByStore/{$store}", [], 'operation.getProductsRestByStore returned ex');
+    }
+
+    /**
+     * POST api/operation/getProductsRestAdvance
+     * Request body: { "prods": int[], "store": int (0 = all stores), "price": int (price type id, 3 = retail) }
+     * Response: { "rest_info": [{ "id": int, "rest": decimal, "price": double }], "ex": null }
+     */
+    public function restAdvance(array $productIds, int $store = 0, int $priceTypeId = 3): array
+    {
+        return $this->post('getProductsRestAdvance', [
+            'prods' => array_values($productIds),
+            'store' => $store,
+            'price' => $priceTypeId,
+        ], 'operation.getProductsRestAdvance returned ex');
+    }
+
+    /**
+     * GET api/operation/getSubProductsRest
+     * Response: { "rest": [{ "id": int, "sub_id": int, "store": int, "rest": decimal, "reserve": decimal }], "ex": null }
+     */
+    public function subRest(): array
+    {
+        return $this->get('getSubProductsRest', [], 'operation.getSubProductsRest returned ex');
+    }
+
+    /**
+     * POST api/operation/getProductsSelfCost
+     * Request body: { "prods": int[], "date": "yyyy-MM-ddTHH:mm:ss" }
+     * Response: { "cost_info": [{ "id": int, "cost": double }], "ex": null } — AVERAGE cost at the given date.
+     */
+    public function selfCost(array $productIds, DateTimeInterface $date): array
+    {
+        return $this->post('getProductsSelfCost', [
+            'prods' => array_values($productIds),
+            'date' => FinaDate::toFina($date),
+        ], 'operation.getProductsSelfCost returned ex');
+    }
+
+    /**
+     * POST api/operation/getProductPricesAdvance
+     * Request body: { "prods": int[], "price": int (price type id, 3 = retail) }
+     * Response: same shape as getProductPrices, limited to one price type.
+     */
+    public function pricesAdvance(array $productIds, int $priceTypeId = 3): array
+    {
+        return $this->post('getProductPricesAdvance', [
+            'prods' => array_values($productIds),
+            'price' => $priceTypeId,
+        ], 'operation.getProductPricesAdvance returned ex');
+    }
+
+    /**
+     * GET api/operation/getProductImages/{product}
+     * Response: { "images": [{ "id": int, "image": base64 }], "ex": null }
+     */
+    public function images(int $productId): array
+    {
+        return $this->get("getProductImages/{$productId}", [], 'operation.getProductImages returned ex');
+    }
+
+    /**
+     * GET api/operation/getProductPlaces
+     * Response: { "places": [{ "product_id": int, "store_id": int, "place": string }], "ex": null }
+     */
+    public function places(): array
+    {
+        return $this->get('getProductPlaces', [], 'operation.getProductPlaces returned ex');
+    }
+
+    /**
+     * GET api/operation/getCharacteristicValues
+     * Response: { "characteristic_values": [{ "product_id", "characteristic_id", "value", "value2", "value3" }], "ex": null }
+     */
+    public function characteristicValues(): array
+    {
+        return $this->get('getCharacteristicValues', [], 'operation.getCharacteristicValues returned ex');
+    }
+
+    /**
+     * POST api/operation/getCharacteristicValuesArray
+     * Request body: int[] (product ids)
+     */
+    public function characteristicValuesByProductIds(array $productIds): array
+    {
+        return $this->post('getCharacteristicValuesArray', array_values($productIds), 'operation.getCharacteristicValuesArray returned ex');
+    }
+
+    /**
+     * GET api/operation/getPackedProducts
+     * Response: { "pack_info": [{ "product_id": int, "pack_id": int }], "ex": null }
+     */
+    public function packed(): array
+    {
+        return $this->get('getPackedProducts', [], 'operation.getPackedProducts returned ex');
+    }
+
+    /**
+     * GET api/operation/getSubCodeTypes
+     * Response: { "types": [{ "name": "sub_column_N", "header": string }], "ex": null }
+     */
+    public function subCodeTypes(): array
+    {
+        return $this->get('getSubCodeTypes', [], 'operation.getSubCodeTypes returned ex');
+    }
+
+    /**
+     * GET api/operation/getProductSubCodes
+     * Response: { "sub_codes": [{ "product_id", "sub_id", "barcode", "sub_columns": [{field, value}] }], "ex": null }
+     */
+    public function subCodes(): array
+    {
+        return $this->get('getProductSubCodes', [], 'operation.getProductSubCodes returned ex');
+    }
+
+    /**
+     * GET api/operation/getProductsOnWay
+     * Response: { "on_way": [{ "id": int, "date": date, "quantity": decimal }], "ex": null }
+     */
+    public function onWay(): array
+    {
+        return $this->get('getProductsOnWay', [], 'operation.getProductsOnWay returned ex');
+    }
+
+    /**
+     * GET api/operation/getProductAdditionalFields
+     *
+     * @return AdditionalFieldDescriptorDto[]
+     */
+    public function additionalFields(): array
+    {
+        $data = $this->get('getProductAdditionalFields', [], 'operation.getProductAdditionalFields returned ex');
+
+        return array_map(
+            static fn ($f) => AdditionalFieldDescriptorDto::fromArray((array) $f),
+            (array) ($data['fields'] ?? [])
+        );
+    }
+
+    /**
+     * POST api/operation/saveProduct — insert (id = 0) or update a catalog product.
+     * A non-null `barcodes` or `images` array REPLACES the product's existing ones;
+     * `prices` only sets the listed price types. Response: { "id", "ex" }.
+     */
+    public function save(ArrayPayload|array $payload): SaveDocResponse
+    {
+        if ($payload instanceof ValidatesPayload) {
+            PayloadValidator::validate($payload);
+        }
+
+        $body = $payload instanceof ArrayPayload ? $payload->toArray() : $payload;
+
+        return SaveDocResponse::fromArray(
+            $this->post('saveProduct', $body, 'operation.saveProduct returned ex')
+        );
     }
 }

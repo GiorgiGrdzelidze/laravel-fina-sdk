@@ -9,8 +9,12 @@ declare(strict_types=1);
 namespace Fina\Sdk\Laravel\Operation;
 
 use Fina\Sdk\Laravel\Client\FinaClient;
+use Fina\Sdk\Laravel\Contracts\ArrayPayload;
+use Fina\Sdk\Laravel\Contracts\ValidatesPayload;
 use Fina\Sdk\Laravel\Endpoints\BaseApi;
 use Fina\Sdk\Laravel\Operation\Dto\ContragentSubAccountDto;
+use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
+use Fina\Sdk\Laravel\Support\PayloadValidator;
 
 /**
  * Provides methods for retrieving vendor data from the FINA Operation API.
@@ -82,6 +86,23 @@ final class VendorsApi extends BaseApi
         return array_map(
             fn ($s) => ContragentSubAccountDto::fromArray((array) $s),
             (array) ($data['contragent_sub_accounts'] ?? [])
+        );
+    }
+
+    /**
+     * POST api/operation/saveVendor — insert (id = 0) or update a vendor.
+     * Response: { "id", "ex" }.
+     */
+    public function save(ArrayPayload|array $payload): SaveDocResponse
+    {
+        if ($payload instanceof ValidatesPayload) {
+            PayloadValidator::validate($payload);
+        }
+
+        $body = $payload instanceof ArrayPayload ? $payload->toArray() : $payload;
+
+        return SaveDocResponse::fromArray(
+            $this->post('saveVendor', $body, 'operation.saveVendor returned ex')
         );
     }
 }

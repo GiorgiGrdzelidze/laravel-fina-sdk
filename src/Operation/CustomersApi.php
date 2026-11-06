@@ -9,10 +9,14 @@ declare(strict_types=1);
 namespace Fina\Sdk\Laravel\Operation;
 
 use Fina\Sdk\Laravel\Client\FinaClient;
+use Fina\Sdk\Laravel\Contracts\ArrayPayload;
+use Fina\Sdk\Laravel\Contracts\ValidatesPayload;
 use Fina\Sdk\Laravel\Endpoints\BaseApi;
 use Fina\Sdk\Laravel\Operation\Dto\ContragentSubAccountDto;
 use Fina\Sdk\Laravel\Operation\Dto\ContragentSubAccountFieldDto;
 use Fina\Sdk\Laravel\Operation\Dto\CustomerAgreementDto;
+use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
+use Fina\Sdk\Laravel\Support\PayloadValidator;
 
 /**
  * Provides methods for retrieving customer data from the FINA Operation API.
@@ -116,6 +120,23 @@ final class CustomersApi extends BaseApi
         return array_map(
             fn ($s) => ContragentSubAccountDto::fromArray((array) $s),
             (array) ($data['contragent_sub_accounts'] ?? [])
+        );
+    }
+
+    /**
+     * POST api/operation/saveCustomer — insert (id = 0) or update a customer.
+     * Response: { "id", "ex" }.
+     */
+    public function save(ArrayPayload|array $payload): SaveDocResponse
+    {
+        if ($payload instanceof ValidatesPayload) {
+            PayloadValidator::validate($payload);
+        }
+
+        $body = $payload instanceof ArrayPayload ? $payload->toArray() : $payload;
+
+        return SaveDocResponse::fromArray(
+            $this->post('saveCustomer', $body, 'operation.saveCustomer returned ex')
         );
     }
 }

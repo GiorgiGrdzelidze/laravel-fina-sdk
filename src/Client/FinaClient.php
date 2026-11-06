@@ -15,9 +15,11 @@ use Fina\Sdk\Laravel\Exceptions\FinaHttpException;
 use Fina\Sdk\Laravel\FinaSdkServiceProvider;
 use Fina\Sdk\Laravel\Operation\CustomersApi;
 use Fina\Sdk\Laravel\Operation\DocumentsApi;
+use Fina\Sdk\Laravel\Operation\InventoriesApi;
 use Fina\Sdk\Laravel\Operation\LoyaltyApi;
 use Fina\Sdk\Laravel\Operation\ProductsApi;
 use Fina\Sdk\Laravel\Operation\ReferenceApi;
+use Fina\Sdk\Laravel\Operation\ServicesApi;
 use Fina\Sdk\Laravel\Operation\VendorsApi;
 use Fina\Sdk\Laravel\Reporting\JournalsApi;
 use Fina\Sdk\Laravel\Reporting\ReportingApi;
@@ -55,6 +57,10 @@ final class FinaClient
     private ?LoyaltyApi $loyaltyApi = null;
 
     private ?ReferenceApi $referenceApi = null;
+
+    private ?ServicesApi $servicesApi = null;
+
+    private ?InventoriesApi $inventoriesApi = null;
 
     private ?JournalsApi $journalsApi = null;
 
@@ -260,6 +266,18 @@ final class FinaClient
     public function reference(): ReferenceApi
     {
         return $this->referenceApi ??= new ReferenceApi($this);
+    }
+
+    /** Get the Services catalog API client. */
+    public function services(): ServicesApi
+    {
+        return $this->servicesApi ??= new ServicesApi($this);
+    }
+
+    /** Get the Inventories (fixed assets) API client. */
+    public function inventories(): InventoriesApi
+    {
+        return $this->inventoriesApi ??= new InventoriesApi($this);
     }
 
     /** Get the Journals API client (low-level reporting). */

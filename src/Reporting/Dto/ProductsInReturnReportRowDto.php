@@ -9,31 +9,38 @@ declare(strict_types=1);
 namespace Fina\Sdk\Laravel\Reporting\Dto;
 
 /**
- * getProductsInReturnReport -> reports[] row.
- *
- * Fields can vary; we keep `$raw` for forward-compatibility.
+ * getProductsInReturnReport -> reports[] row: one line per product per
+ * purchase (doc_type 16) or return-to-vendor (doc_type 32) document.
  */
 final class ProductsInReturnReportRowDto
 {
     public function __construct(
-        public readonly int $id,
-        public readonly string $name,
-        public readonly string $barcode,
-        public readonly float $inQuantity,
-        public readonly float $returnQuantity,
-        public readonly float $diffQuantity,
+        public readonly string $date,
+        public readonly string $docNum,
+        public readonly int $docType,
+        public readonly int $vendorId,
+        public readonly int $storeId,
+        public readonly int $productId,
+        public readonly int $unitId,
+        public readonly float $quantity,
+        public readonly float $amount,
+        public readonly float $vat,
         public readonly array $raw = [],
     ) {}
 
     public static function fromArray(array $row): self
     {
         return new self(
-            id: (int) ($row['id'] ?? ($row['product_id'] ?? 0)),
-            name: (string) ($row['name'] ?? ($row['product_name'] ?? '')),
-            barcode: (string) ($row['barcode'] ?? ''),
-            inQuantity: (float) ($row['in_qty'] ?? ($row['in_quantity'] ?? 0.0)),
-            returnQuantity: (float) ($row['ret_qty'] ?? ($row['return_quantity'] ?? 0.0)),
-            diffQuantity: (float) ($row['diff_qty'] ?? ($row['diff_quantity'] ?? 0.0)),
+            date: (string) ($row['date'] ?? ''),
+            docNum: (string) ($row['doc_num'] ?? ''),
+            docType: (int) ($row['doc_type'] ?? 0),
+            vendorId: (int) ($row['vendor_id'] ?? 0),
+            storeId: (int) ($row['store_id'] ?? 0),
+            productId: (int) ($row['product_id'] ?? 0),
+            unitId: (int) ($row['unit_id'] ?? 0),
+            quantity: (float) ($row['quantity'] ?? 0.0),
+            amount: (float) ($row['amount'] ?? 0.0),
+            vat: (float) ($row['vat'] ?? 0.0),
             raw: $row,
         );
     }
@@ -41,12 +48,16 @@ final class ProductsInReturnReportRowDto
     public function toArray(): array
     {
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'barcode' => $this->barcode,
-            'in_qty' => $this->inQuantity,
-            'ret_qty' => $this->returnQuantity,
-            'diff_qty' => $this->diffQuantity,
+            'date' => $this->date,
+            'doc_num' => $this->docNum,
+            'doc_type' => $this->docType,
+            'vendor_id' => $this->vendorId,
+            'store_id' => $this->storeId,
+            'product_id' => $this->productId,
+            'unit_id' => $this->unitId,
+            'quantity' => $this->quantity,
+            'amount' => $this->amount,
+            'vat' => $this->vat,
             'raw' => $this->raw,
         ];
     }

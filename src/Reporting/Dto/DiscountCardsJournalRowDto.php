@@ -8,6 +8,12 @@ declare(strict_types=1);
 
 namespace Fina\Sdk\Laravel\Reporting\Dto;
 
+/**
+ * getDiscountCardsJournal -> journals[] row (doc_type 118).
+ *
+ * `amount` is the customer's accumulated purchase total through the card;
+ * the holder id comes under `customer` (not customer_id) in this journal.
+ */
 final class DiscountCardsJournalRowDto
 {
     public function __construct(
@@ -18,7 +24,12 @@ final class DiscountCardsJournalRowDto
         public readonly int $docType,
         public readonly string $purpose,
         public readonly float $amount,
-        public readonly string $currency,
+        public readonly int $staffId,
+        public readonly int $customerId,
+        public readonly int $storeId,
+        public readonly string $cardCode,
+        public readonly int $discountId,
+        public readonly bool $status,
         public readonly array $raw = [],
     ) {}
 
@@ -28,11 +39,16 @@ final class DiscountCardsJournalRowDto
             id: (int) ($row['id'] ?? 0),
             version: (string) ($row['version'] ?? ''),
             date: (string) ($row['date'] ?? ''),
-            docNum: (string) ($row['doc_num'] ?? ($row['docNum'] ?? '')),
-            docType: (int) ($row['doc_type'] ?? ($row['docType'] ?? 0)),
+            docNum: (string) ($row['doc_num'] ?? ''),
+            docType: (int) ($row['doc_type'] ?? 0),
             purpose: (string) ($row['purpose'] ?? ''),
             amount: (float) ($row['amount'] ?? 0.0),
-            currency: (string) ($row['currency'] ?? ''),
+            staffId: (int) ($row['staff_id'] ?? 0),
+            customerId: (int) ($row['customer'] ?? ($row['customer_id'] ?? 0)),
+            storeId: (int) ($row['store_id'] ?? 0),
+            cardCode: (string) ($row['card_code'] ?? ''),
+            discountId: (int) ($row['discount_id'] ?? 0),
+            status: (bool) ($row['status'] ?? false),
             raw: $row,
         );
     }
@@ -47,7 +63,12 @@ final class DiscountCardsJournalRowDto
             'doc_type' => $this->docType,
             'purpose' => $this->purpose,
             'amount' => $this->amount,
-            'currency' => $this->currency,
+            'staff_id' => $this->staffId,
+            'customer_id' => $this->customerId,
+            'store_id' => $this->storeId,
+            'card_code' => $this->cardCode,
+            'discount_id' => $this->discountId,
+            'status' => $this->status,
             'raw' => $this->raw,
         ];
     }

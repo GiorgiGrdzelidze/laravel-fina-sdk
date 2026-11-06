@@ -10,12 +10,17 @@ namespace Fina\Sdk\Laravel\Operation;
 
 use DateTimeInterface;
 use Fina\Sdk\Laravel\Client\FinaClient;
+use Fina\Sdk\Laravel\Contracts\ArrayPayload;
+use Fina\Sdk\Laravel\Contracts\ValidatesPayload;
 use Fina\Sdk\Laravel\Endpoints\BaseApi;
 use Fina\Sdk\Laravel\Operation\Dto\AccountValueDetailDto;
+use Fina\Sdk\Laravel\Operation\Dto\AccountValueDto;
+use Fina\Sdk\Laravel\Operation\Dto\AdditionalFieldDescriptorDto;
 use Fina\Sdk\Laravel\Operation\Dto\BankAccountDto;
 use Fina\Sdk\Laravel\Operation\Dto\DiscountTypeDto;
 use Fina\Sdk\Laravel\Operation\Dto\DocTypeDto;
 use Fina\Sdk\Laravel\Operation\Dto\GiftCardDto;
+use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
 use Fina\Sdk\Laravel\Operation\Dto\StaffDto;
 use Fina\Sdk\Laravel\Operation\Dto\StaffGroupDto;
 use Fina\Sdk\Laravel\Operation\Dto\TransportationMeanDto;
@@ -23,6 +28,7 @@ use Fina\Sdk\Laravel\Operation\Dto\UnitDto;
 use Fina\Sdk\Laravel\Operation\Dto\UserDto;
 use Fina\Sdk\Laravel\Operation\Dto\UserPermissionsDto;
 use Fina\Sdk\Laravel\Support\FinaDate;
+use Fina\Sdk\Laravel\Support\PayloadValidator;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -157,6 +163,81 @@ final class ReferenceApi extends BaseApi
     public function priceTypes(): array
     {
         return $this->get('getPriceTypes', [], 'operation.getPriceTypes returned ex');
+    }
+
+    /** GET api/operation/getStoreGroups — returns groups[] */
+    public function storeGroups(): array
+    {
+        $data = $this->get('getStoreGroups', [], 'operation.getStoreGroups returned ex');
+
+        return (array) ($data['groups'] ?? []);
+    }
+
+    /**
+     * GET api/operation/getStaffAdditionalFields
+     *
+     * @return AdditionalFieldDescriptorDto[]
+     */
+    public function staffAdditionalFields(): array
+    {
+        $data = $this->get('getStaffAdditionalFields', [], 'operation.getStaffAdditionalFields returned ex');
+
+        return array_map(
+            static fn ($f) => AdditionalFieldDescriptorDto::fromArray((array) $f),
+            (array) ($data['fields'] ?? [])
+        );
+    }
+
+    /**
+     * GET api/operation/getDocAdditionalFields/{type}
+     * Additional fields defined for one document type (see getDocTypes).
+     *
+     * @return AdditionalFieldDescriptorDto[]
+     */
+    public function docAdditionalFields(int $docType): array
+    {
+        $data = $this->get("getDocAdditionalFields/{$docType}", [], 'operation.getDocAdditionalFields returned ex');
+
+        return array_map(
+            static fn ($f) => AdditionalFieldDescriptorDto::fromArray((array) $f),
+            (array) ($data['fields'] ?? [])
+        );
+    }
+
+    /**
+     * POST api/operation/getAccountValue
+     * Turnover totals of one accounting account; `obj` is the id of the object
+     * the account is kept for (e.g. the customer id for 1410), `isGel` asks for
+     * the GEL equivalent.
+     */
+    public function accountValue(string $primaryAcc, DateTimeInterface $date, int $obj = 0, string $secondaryAcc = '', bool $isGel = true): AccountValueDto
+    {
+        $data = $this->post('getAccountValue', [
+            'primary_acc' => $primaryAcc,
+            'secondary_acc' => $secondaryAcc,
+            'date' => FinaDate::toFina($date),
+            'obj' => $obj,
+            'is_gel' => $isGel,
+        ], 'operation.getAccountValue returned ex');
+
+        return AccountValueDto::fromArray($data);
+    }
+
+    /**
+     * POST api/operation/saveStaff — insert (id = 0) or update a staff member.
+     * Response: { "id", "ex" }.
+     */
+    public function saveStaff(ArrayPayload|array $payload): SaveDocResponse
+    {
+        if ($payload instanceof ValidatesPayload) {
+            PayloadValidator::validate($payload);
+        }
+
+        $body = $payload instanceof ArrayPayload ? $payload->toArray() : $payload;
+
+        return SaveDocResponse::fromArray(
+            $this->post('saveStaff', $body, 'operation.saveStaff returned ex')
+        );
     }
 
     // -----------------------

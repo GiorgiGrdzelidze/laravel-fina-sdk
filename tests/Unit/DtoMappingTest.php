@@ -109,16 +109,49 @@ final class DtoMappingTest extends TestCase
 
     public function test_entries_journal_maps_fields(): void
     {
+        // Two lines of ONE operation (id 3121) as in the PDF example: same id and
+        // version, different accounts and even different doc_type per line.
         $raw = [
             'journals' => [
                 [
-                    'id' => 99,
-                    'version' => 'abc',
-                    'date' => '2025-03-01T00:00:00',
-                    'doc_num' => 'EJ-100',
-                    'doc_type' => 7,
-                    'purpose' => 'Accounting entry',
-                    'amount' => 1234.56,
+                    'id' => 3121,
+                    'version' => 'AAAAAAABf5A=',
+                    'date' => '2018-10-19 16:03:21',
+                    'doc_num' => '5',
+                    'waybill_num' => null,
+                    'doc_type' => 49,
+                    'purpose' => 'ავანსის მიღება მყიდველისგან - რონალდ რეიგანი',
+                    'amount' => 12.00,
+                    'amount_currency' => 24,
+                    'currency' => 'USD',
+                    'staff_id' => 1,
+                    'debit_acc' => '1110.1',
+                    'debit_comment' => 'მთავარი სალარო',
+                    'debit_quantity' => 0,
+                    'credit_acc' => '3120.8',
+                    'credit_comment' => 'რონალდ რეიგანი',
+                    'credit_quantity' => 0,
+                    'project_id' => 2,
+                ],
+                [
+                    'id' => 3121,
+                    'version' => 'AAAAAAABf5A=',
+                    'date' => '2018-10-19 16:03:21',
+                    'doc_num' => '5',
+                    'waybill_num' => null,
+                    'doc_type' => 38,
+                    'purpose' => 'ავანსის მიღება მყიდველისგან - რონალდ რეიგანი',
+                    'amount' => 1.83,
+                    'amount_currency' => 1.83,
+                    'currency' => 'GEL',
+                    'staff_id' => 1,
+                    'debit_acc' => '3339',
+                    'debit_comment' => 'გადასახდელი დღგ-ს ტრანზიტული ანგარიში',
+                    'debit_quantity' => 0,
+                    'credit_acc' => '3330',
+                    'credit_comment' => 'გადასახდელი დღგ',
+                    'credit_quantity' => 0,
+                    'project_id' => 1,
                 ],
             ],
             'ex' => null,
@@ -126,14 +159,41 @@ final class DtoMappingTest extends TestCase
 
         $dto = EntriesJournalResponseDto::fromArray($raw);
 
-        $this->assertCount(1, $dto->journals);
-        $row = $dto->journals[0];
-        $this->assertInstanceOf(EntriesJournalRowDto::class, $row);
-        $this->assertSame(99, $row->id);
-        $this->assertSame('abc', $row->version);
-        $this->assertSame('EJ-100', $row->docNum);
-        $this->assertSame(7, $row->docType);
-        $this->assertSame(1234.56, $row->amount);
+        $this->assertCount(2, $dto->journals);
+        $first = $dto->journals[0];
+        $this->assertInstanceOf(EntriesJournalRowDto::class, $first);
+        $this->assertSame(3121, $first->id);
+        $this->assertSame('AAAAAAABf5A=', $first->version);
+        $this->assertSame('2018-10-19 16:03:21', $first->date);
+        $this->assertSame('5', $first->docNum);
+        $this->assertNull($first->waybillNum);
+        $this->assertSame(49, $first->docType);
+        $this->assertSame(12.0, $first->amount);
+        $this->assertSame(24.0, $first->amountCurrency);
+        $this->assertSame('USD', $first->currency);
+        $this->assertSame(1, $first->staffId);
+        $this->assertSame('1110.1', $first->debitAcc);
+        $this->assertSame('მთავარი სალარო', $first->debitComment);
+        $this->assertSame(0.0, $first->debitQuantity);
+        $this->assertSame('3120.8', $first->creditAcc);
+        $this->assertSame('რონალდ რეიგანი', $first->creditComment);
+        $this->assertSame(0.0, $first->creditQuantity);
+        $this->assertSame(2, $first->projectId);
+
+        $second = $dto->journals[1];
+        $this->assertSame(38, $second->docType);
+        $this->assertSame('3339', $second->debitAcc);
+        $this->assertSame('3330', $second->creditAcc);
+        $this->assertSame(1.83, $second->amountCurrency);
+        $this->assertSame($first->dedupeKey(), $second->dedupeKey(), 'lines of one operation share the operation key');
+        $this->assertSame($raw['journals'][1], $second->raw);
+    }
+
+    public function test_entries_journal_amount_currency_falls_back_to_amount(): void
+    {
+        $row = EntriesJournalRowDto::fromArray(['id' => 1, 'version' => 'v', 'amount' => 7.5]);
+
+        $this->assertSame(7.5, $row->amountCurrency);
     }
 
     public function test_entries_journal_row_dedupe_key(): void
@@ -167,10 +227,14 @@ final class DtoMappingTest extends TestCase
         $this->assertSame(2, $arr['doc_type']);
         $this->assertSame(10.0, $arr['amount']);
         $this->assertArrayHasKey('raw', $arr);
+        foreach (['waybill_num', 'amount_currency', 'currency', 'staff_id', 'debit_acc', 'debit_comment', 'debit_quantity', 'credit_acc', 'credit_comment', 'credit_quantity', 'project_id'] as $key) {
+            $this->assertArrayHasKey($key, $arr);
+        }
     }
 
     // -----------------------------------------------------------------
-    // ProductsInReturnReportResponseDto (was empty file — regression test)
+    // ProductsInReturnReportResponseDto — rows exactly as the FINA 8.0 PDF
+    // (getProductsInReturnReport) documents them
     // -----------------------------------------------------------------
 
     public function test_products_in_return_report_maps_fields(): void
@@ -178,12 +242,28 @@ final class DtoMappingTest extends TestCase
         $raw = [
             'reports' => [
                 [
-                    'id' => 1,
-                    'name' => 'Widget',
-                    'barcode' => '123456',
-                    'in_qty' => 100.0,
-                    'ret_qty' => 5.0,
-                    'diff_qty' => 95.0,
+                    'date' => '2020-08-21T13:01:28.913',
+                    'doc_num' => '10',
+                    'doc_type' => 16,
+                    'vendor_id' => 24,
+                    'store_id' => 1,
+                    'product_id' => 1,
+                    'unit_id' => 1,
+                    'quantity' => 20,
+                    'amount' => 2000,
+                    'vat' => 0,
+                ],
+                [
+                    'date' => '2020-09-22T08:21:27',
+                    'doc_num' => '0548560688',
+                    'doc_type' => 32,
+                    'vendor_id' => 5,
+                    'store_id' => 1,
+                    'product_id' => 58,
+                    'unit_id' => 1,
+                    'quantity' => 1,
+                    'amount' => 3,
+                    'vat' => 0.457627,
                 ],
             ],
             'ex' => null,
@@ -191,16 +271,27 @@ final class DtoMappingTest extends TestCase
 
         $dto = ProductsInReturnReportResponseDto::fromArray($raw);
 
-        $this->assertCount(1, $dto->reports);
+        $this->assertCount(2, $dto->reports);
         $this->assertNull($dto->ex);
 
         $row = $dto->reports[0];
         $this->assertInstanceOf(ProductsInReturnReportRowDto::class, $row);
-        $this->assertSame(1, $row->id);
-        $this->assertSame('Widget', $row->name);
-        $this->assertSame(100.0, $row->inQuantity);
-        $this->assertSame(5.0, $row->returnQuantity);
-        $this->assertSame(95.0, $row->diffQuantity);
+        $this->assertSame('2020-08-21T13:01:28.913', $row->date);
+        $this->assertSame('10', $row->docNum);
+        $this->assertSame(16, $row->docType);
+        $this->assertSame(24, $row->vendorId);
+        $this->assertSame(1, $row->storeId);
+        $this->assertSame(1, $row->productId);
+        $this->assertSame(1, $row->unitId);
+        $this->assertSame(20.0, $row->quantity);
+        $this->assertSame(2000.0, $row->amount);
+        $this->assertSame(0.0, $row->vat);
+
+        $return = $dto->reports[1];
+        $this->assertSame(32, $return->docType);
+        $this->assertSame(58, $return->productId);
+        $this->assertSame(0.457627, $return->vat);
+        $this->assertSame($raw['reports'][1], $return->raw);
     }
 
     // -----------------------------------------------------------------

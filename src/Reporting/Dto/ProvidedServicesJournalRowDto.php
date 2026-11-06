@@ -8,6 +8,11 @@ declare(strict_types=1);
 
 namespace Fina\Sdk\Laravel\Reporting\Dto;
 
+/**
+ * getDocProvidedServicesJournal -> journals[] row (doc_type 29).
+ *
+ * `f_status` tells whether the tax invoice (ა/ფ) has been issued.
+ */
 final class ProvidedServicesJournalRowDto
 {
     public function __construct(
@@ -16,11 +21,13 @@ final class ProvidedServicesJournalRowDto
         public readonly string $date,
         public readonly string $docNum,
         public readonly int $docType,
-        public readonly int $customerId,
-        public readonly string $customerName,
-        public readonly float $amount,
-        public readonly string $currency,
         public readonly string $purpose,
+        public readonly float $amount,
+        public readonly int $staffId,
+        public readonly string $currency,
+        public readonly int $customerId,
+        public readonly bool $fStatus,
+        public readonly int $payType,
         public readonly array $raw = [],
     ) {}
 
@@ -30,13 +37,15 @@ final class ProvidedServicesJournalRowDto
             id: (int) ($row['id'] ?? 0),
             version: (string) ($row['version'] ?? ''),
             date: (string) ($row['date'] ?? ''),
-            docNum: (string) ($row['doc_num'] ?? ($row['docNum'] ?? '')),
-            docType: (int) ($row['doc_type'] ?? ($row['docType'] ?? 0)),
-            customerId: (int) ($row['customer_id'] ?? 0),
-            customerName: (string) ($row['customer_name'] ?? ($row['customer'] ?? '')),
-            amount: (float) ($row['amount'] ?? 0.0),
-            currency: (string) ($row['currency'] ?? ''),
+            docNum: (string) ($row['doc_num'] ?? ''),
+            docType: (int) ($row['doc_type'] ?? 0),
             purpose: (string) ($row['purpose'] ?? ''),
+            amount: (float) ($row['amount'] ?? 0.0),
+            staffId: (int) ($row['staff_id'] ?? 0),
+            currency: (string) ($row['currency'] ?? ''),
+            customerId: (int) ($row['customer_id'] ?? 0),
+            fStatus: (bool) ($row['f_status'] ?? false),
+            payType: (int) ($row['pay_type'] ?? 0),
             raw: $row,
         );
     }
@@ -49,11 +58,13 @@ final class ProvidedServicesJournalRowDto
             'date' => $this->date,
             'doc_num' => $this->docNum,
             'doc_type' => $this->docType,
-            'customer_id' => $this->customerId,
-            'customer_name' => $this->customerName,
-            'amount' => $this->amount,
-            'currency' => $this->currency,
             'purpose' => $this->purpose,
+            'amount' => $this->amount,
+            'staff_id' => $this->staffId,
+            'currency' => $this->currency,
+            'customer_id' => $this->customerId,
+            'f_status' => $this->fStatus,
+            'pay_type' => $this->payType,
             'raw' => $this->raw,
         ];
     }

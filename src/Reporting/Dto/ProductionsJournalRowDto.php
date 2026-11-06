@@ -8,6 +8,12 @@ declare(strict_types=1);
 
 namespace Fina\Sdk\Laravel\Reporting\Dto;
 
+/**
+ * getProductionsJournal -> journals[] row.
+ *
+ * `production_type`: 0 production, 1 disassembly, 2 part added / repair,
+ * 3 part separated.
+ */
 final class ProductionsJournalRowDto
 {
     public function __construct(
@@ -19,7 +25,7 @@ final class ProductionsJournalRowDto
         public readonly string $purpose,
         public readonly float $amount,
         public readonly int $storeId,
-        public readonly int $userId,
+        public readonly int $productionType,
         public readonly array $raw = [],
     ) {}
 
@@ -29,12 +35,12 @@ final class ProductionsJournalRowDto
             id: (int) ($row['id'] ?? 0),
             version: (string) ($row['version'] ?? ''),
             date: (string) ($row['date'] ?? ''),
-            docNum: (string) ($row['doc_num'] ?? ($row['docNum'] ?? '')),
-            docType: (int) ($row['doc_type'] ?? ($row['docType'] ?? 0)),
+            docNum: (string) ($row['doc_num'] ?? ''),
+            docType: (int) ($row['doc_type'] ?? 0),
             purpose: (string) ($row['purpose'] ?? ''),
             amount: (float) ($row['amount'] ?? 0.0),
-            storeId: (int) ($row['store_id'] ?? ($row['store'] ?? 0)),
-            userId: (int) ($row['user_id'] ?? ($row['user'] ?? 0)),
+            storeId: (int) ($row['store_id'] ?? 0),
+            productionType: (int) ($row['production_type'] ?? 0),
             raw: $row,
         );
     }
@@ -50,7 +56,7 @@ final class ProductionsJournalRowDto
             'purpose' => $this->purpose,
             'amount' => $this->amount,
             'store_id' => $this->storeId,
-            'user_id' => $this->userId,
+            'production_type' => $this->productionType,
             'raw' => $this->raw,
         ];
     }

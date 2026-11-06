@@ -9,6 +9,7 @@ use Fina\Sdk\Laravel\Client\FinaClient;
 use Fina\Sdk\Laravel\Reporting\Dto\EntriesJournalResponseDto;
 use Fina\Sdk\Laravel\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 
 final class ReportingChunkingTest extends TestCase
 {
@@ -180,5 +181,125 @@ final class ReportingChunkingTest extends TestCase
         // id:1 should be deduped (first occurrence kept)
         $this->assertCount(3, $result['reports']);
         $this->assertSame('first', $result['reports'][0]['value']);
+    }
+
+    public function test_chunked_keeps_every_entry_line_of_an_operation(): void
+    {
+        // getEntriesJournal: one row per entry LINE; every line of operation 3121
+        // carries the same id + version (as in the FINA 8.0 PDF example).
+        $line = static fn (string $debit, string $credit, float $amount): array => [
+            'id' => 3121,
+            'version' => 'AAAAAAABf5A=',
+            'date' => '2018-10-19 16:03:21',
+            'doc_num' => '5',
+            'doc_type' => 49,
+            'amount' => $amount,
+            'debit_acc' => $debit,
+            'credit_acc' => $credit,
+        ];
+
+        $chunk1 = [
+            'journals' => [
+                $line('1110.1', '3120.8', 12.0),
+                $line('3339', '3330', 1.83),
+                // two genuinely identical lines must both survive
+                $line('1410', '6110', 5.0),
+                $line('1410', '6110', 5.0),
+                ['id' => 3122, 'version' => 'B', 'date' => '2018-10-20 10:00:00', 'amount' => 1.0, 'debit_acc' => '1410', 'credit_acc' => '6110'],
+            ],
+            'ex' => null,
+        ];
+
+        // Chunk 2 overlaps the boundary and re-sends operation 3122 in full, plus a new one.
+        $chunk2 = [
+            'journals' => [
+                ['id' => 3122, 'version' => 'B', 'date' => '2018-10-20 10:00:00', 'amount' => 1.0, 'debit_acc' => '1410', 'credit_acc' => '6110'],
+                ['id' => 3123, 'version' => 'C', 'date' => '2018-10-25 10:00:00', 'amount' => 2.0, 'debit_acc' => '1410', 'credit_acc' => '6110'],
+                ['id' => 3123, 'version' => 'C', 'date' => '2018-10-25 10:00:00', 'amount' => 0.3, 'debit_acc' => '3339', 'credit_acc' => '3330'],
+            ],
+            'ex' => null,
+        ];
+
+        $callIndex = 0;
+
+        Http::fake(function ($request) use (&$callIndex, $chunk1, $chunk2) {
+            if (str_contains($request->url(), '/api/authentication/authenticate')) {
+                return Http::response(['token' => 'tok', 'ex' => null], 200);
+            }
+
+            if (str_contains($request->url(), 'getEntriesJournal')) {
+                $callIndex++;
+
+                return Http::response($callIndex === 1 ? $chunk1 : $chunk2, 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $result = $this->makeClient()->reporting()->entriesJournalChunked(
+            CarbonImmutable::create(2018, 10, 19),
+            CarbonImmutable::create(2018, 10, 31),
+            7
+        );
+
+        $this->assertSame(2, $callIndex);
+        // 4 lines of 3121 + 1 line of 3122 (once) + 2 lines of 3123 = 7
+        $this->assertCount(7, $result['journals']);
+        $this->assertSame([3121, 3121, 3121, 3121, 3122, 3123, 3123], array_column($result['journals'], 'id'));
+        $this->assertSame(
+            [12.0, 1.83, 5.0, 5.0, 1.0, 2.0, 0.3],
+            array_map(static fn (array $r) => (float) $r['amount'], $result['journals'])
+        );
+
+        $callIndex = 0; // the typed call fetches both chunks again
+        $typed = $this->makeClient()->reporting()->entriesJournalChunkedTyped(
+            CarbonImmutable::create(2018, 10, 19),
+            CarbonImmutable::create(2018, 10, 31),
+            7
+        );
+        $this->assertCount(7, $typed->journals);
+        $this->assertSame('3339', $typed->journals[1]->debitAcc);
+    }
+
+    public function test_chunked_rejects_chunk_days_below_one(): void
+    {
+        Http::fake([
+            '*/api/authentication/*' => Http::response(['token' => 'tok', 'ex' => null]),
+        ]);
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->makeClient()->reporting()->entriesJournalChunked(
+            CarbonImmutable::create(2025, 1, 1),
+            CarbonImmutable::create(2025, 1, 14),
+            0
+        );
+    }
+
+    public function test_chunk_windows_cover_the_whole_range_and_touch_at_boundaries(): void
+    {
+        $urls = [];
+
+        Http::fake(function ($request) use (&$urls) {
+            if (str_contains($request->url(), '/api/authentication/authenticate')) {
+                return Http::response(['token' => 'tok', 'ex' => null], 200);
+            }
+
+            $urls[] = rawurldecode($request->url());
+
+            return Http::response(['journals' => [], 'ex' => null], 200);
+        });
+
+        $this->makeClient()->reporting()->realizesJournalChunked(
+            CarbonImmutable::create(2025, 1, 1, 8, 15, 0),
+            CarbonImmutable::create(2025, 1, 20, 12, 0, 0),
+            7
+        );
+
+        $this->assertSame([
+            'http://fina-test.local:5007/api/reporting/getRealizesJournal/2025-01-01T00:00:00/2025-01-08T00:00:00',
+            'http://fina-test.local:5007/api/reporting/getRealizesJournal/2025-01-08T00:00:00/2025-01-15T00:00:00',
+            'http://fina-test.local:5007/api/reporting/getRealizesJournal/2025-01-15T00:00:00/2025-01-20T12:00:00',
+        ], $urls);
     }
 }

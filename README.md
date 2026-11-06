@@ -12,6 +12,7 @@ A production-ready Laravel SDK for the **FINA Web API v8.0**. Handles authentica
 
 ## Table of Contents
 
+- [What's New in 0.2.0](#whats-new-in-020)
 - [What's New in v8.0](#whats-new-in-v80)
 - [Features](#features)
 - [Requirements](#requirements)
@@ -23,6 +24,8 @@ A production-ready Laravel SDK for the **FINA Web API v8.0**. Handles authentica
   - [Vendors](#vendors)
   - [Products](#products)
   - [Reference Data](#reference-data)
+  - [Services](#services)
+  - [Inventories](#inventories)
   - [Loyalty](#loyalty)
   - [Documents](#documents)
   - [Reporting](#reporting)
@@ -32,6 +35,27 @@ A production-ready Laravel SDK for the **FINA Web API v8.0**. Handles authentica
 - [Testing & Quality](#testing--quality)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
+
+---
+
+## What's New in 0.2.0
+
+Full alignment with the **FINA WEB API 8.0** documentation (8.0.20260303): every one of its 138 methods is now reachable, and a parity test keeps it that way.
+
+| Area | Change |
+|---|---|
+| **Fixed** | Chunked journals deduplicate per *operation across chunks* — `getEntriesJournal` returns one row per entry line with the same `id`/`version` on every line, and the old `id+version` row key silently dropped all but the first line of every document |
+| **Fixed** | `ProductsInReturnReportRowDto`, `ProductsLastInReportRowDto`, `ProductionsJournalRowDto` now map the documented fields (`vendor_id`, `store_id`, `product_id`, `vat`, `waybill_date`, `production_type` …) instead of fields the API never sends |
+| **Journals** | `movesJournal()` (raw / typed / chunked) and typed `realizesJournal()`; every journal row DTO carries all documented fields (`staff_id`, `store_id`, `pay_type`, `order_status`, `f_status`, `card_code`, debit/credit accounts …) |
+| **Documents** | Typed `getProductOutTyped()`, `getProductOutSingleTyped()`, `getProductMoveTyped()`, `getCustomerReturnTyped()`, `getCustomerOrderTyped()`; raw getters for inventory out/move, customer inventory return, provided service, discount card; `saveDiscountCard()`, `saveGiftCard()`, `updateRsStatus()` |
+| **Products** | `restByStore()`, `restAdvance()`, `subRest()`, `selfCost()`, `pricesAdvance()`, `images()`, `places()`, `characteristicValues()`, `characteristicValuesByProductIds()`, `packed()`, `subCodeTypes()`, `subCodes()`, `onWay()`, `additionalFields()`, `save()` |
+| **Reference** | `storeGroups()`, `staffAdditionalFields()`, `docAdditionalFields($type)`, `accountValue()`, `saveStaff()`; `customers()->save()`, `vendors()->save()` |
+| **New clients** | `services()` (provided/received service catalogs) and `inventories()` (fixed assets + rests) |
+| **Tests** | Fixtures copied verbatim from the PDF for every journal, report and document; a read-only integration suite against a real server (`--testsuite Integration`) |
+
+Row DTO constructors changed (new properties, `customer_name`/`vendor_name`/`user_id` that the API never returned are gone). Build rows with `fromArray()`; direct `new` calls need updating.
+
+Not every FINA installation is on the latest build: endpoints added after your server's version answer **404** (`FinaHttpException` with status 404). The integration suite prints which endpoints your server has.
 
 ---
 
@@ -61,7 +85,7 @@ Existing endpoints are unchanged -- the upgrade is fully backwards-compatible.
 | **Auto-authentication** | Fetches, caches (~35h TTL), and transparently refreshes tokens on 401 |
 | **Configurable HTTP** | Timeout, retry count, and retry delay via `.env` |
 | **8 API clients** | Customers, Vendors, Products, Documents, Loyalty, Reference, Journals, Reporting |
-| **Chunked reporting** | Splits large date ranges into windows, merges, deduplicates by `id+version` |
+| **Chunked reporting** | Splits large date ranges into windows, merges, drops operations already delivered by an earlier window (`id+version`), keeps every line of multi-line journals |
 | **Typed DTOs** | `readonly` classes with `fromArray()` factories for all responses |
 | **Validated payloads** | Request DTOs with Laravel validation rules, auto-validated before sending |
 | **Structured exceptions** | Config, HTTP, Remote, and Validation exceptions with useful properties |
@@ -213,8 +237,9 @@ Access via `$fina->customers()`.
 | `agreements()` | `getCustomerAgreements` | `CustomerAgreementDto[]` |
 | `subAccountFields()` | `getContragentSubAccountFields` | `ContragentSubAccountFieldDto[]` |
 | `subAccounts()` | `getCustomerSubAccounts` | `ContragentSubAccountDto[]` |
+| `save($payload)` | `saveCustomer` (POST) | `SaveDocResponse` |
 
-> Last 3 methods are new in v8.0.
+> `agreements()`, `subAccountFields()`, `subAccounts()` are new in v8.0.
 
 ### Vendors
 
@@ -228,6 +253,7 @@ Access via `$fina->vendors()`.
 | `addresses()` | `getVendorAddresses` | `array` |
 | `additionalFields()` | `getVendorAdditionalFields` | `array` |
 | `subAccounts()` | `getVendorSubAccounts` | `ContragentSubAccountDto[]` |
+| `save($payload)` | `saveVendor` (POST) | `SaveDocResponse` |
 
 > `subAccounts()` is new in v8.0.
 
@@ -253,9 +279,24 @@ Access via `$fina->products()`.
 | `restAfter($date)` | `getProductsRestAfter/{date}` | `array` |
 | `restSummary($prods, $stores, $date)` | `getProductsRestSummary` (POST) | `array` |
 | `restByStoreAfter($store, $date)` | `getProductsRestByStoreAfter/{store}/{date}` | `array` |
+| `restByStore($store)` | `getProductsRestByStore/{store}` | `array` |
+| `restAdvance($ids, $store = 0, $priceTypeId = 3)` | `getProductsRestAdvance` (POST) | `array` |
+| `subRest()` | `getSubProductsRest` | `array` |
+| `selfCost($ids, $date)` | `getProductsSelfCost` (POST) | `array` (`cost_info`) |
+| `pricesAdvance($ids, $priceTypeId = 3)` | `getProductPricesAdvance` (POST) | `array` |
+| `images($productId)` | `getProductImages/{product}` | `array` |
+| `places()` | `getProductPlaces` | `array` |
+| `characteristicValues()` | `getCharacteristicValues` | `array` |
+| `characteristicValuesByProductIds($ids)` | `getCharacteristicValuesArray` (POST) | `array` |
+| `packed()` | `getPackedProducts` | `array` |
+| `subCodeTypes()` | `getSubCodeTypes` | `array` |
+| `subCodes()` | `getProductSubCodes` | `array` |
+| `onWay()` | `getProductsOnWay` | `array` |
+| `additionalFields()` | `getProductAdditionalFields` | `AdditionalFieldDescriptorDto[]` |
 | `providedServicePrices()` | `getProvidedServicePrices` | `array` |
+| `save($payload)` | `saveProduct` (POST) | `SaveDocResponse` |
 
-> Last 4 methods are new in v8.0.
+> `getProductsRest.rest` is already net of `reserve`. `restSummary()` is the stock at a given date; `selfCost()` the average cost at a given date.
 
 ### Reference Data
 
@@ -280,6 +321,7 @@ Access via `$fina->reference()`.
 | `providedServiceGroups()` | `getProvidedServiceGroups` |
 | `receivedServiceGroups()` | `getReceivedServiceGroups` |
 | `inventoryGroups()` | `getInventoryGroups` |
+| `storeGroups()` | `getStoreGroups` |
 
 **Typed endpoints:**
 
@@ -299,8 +341,37 @@ Access via `$fina->reference()`.
 | `findDocType($id)` | `?DocTypeDto` |
 | `transportationMeans()` | `TransportationMeanDto[]` |
 | `accountValueDetails($account, $date, $currency?)` | `AccountValueDetailDto[]` (POST) |
+| `accountValue($primaryAcc, $date, $obj = 0, $secondaryAcc = '', $isGel = true)` | `AccountValueDto` (POST) |
+| `staffAdditionalFields()` | `AdditionalFieldDescriptorDto[]` |
+| `docAdditionalFields($docType)` | `AdditionalFieldDescriptorDto[]` |
+| `saveStaff($payload)` | `SaveDocResponse` (POST `saveStaff`) |
 
-> Last 2 methods are new in v8.0.
+> `transportationMeans()` and `accountValueDetails()` are new in v8.0.
+
+### Services
+
+Access via `$fina->services()` — the service *catalogs*; service documents live under `documents()`.
+
+| Method | FINA Endpoint | Returns |
+|---|---|---|
+| `provided()` | `getProvidedServices` | `array` |
+| `received()` | `getReceivedServices` | `array` |
+| `providedAdditionalFields()` | `getProvidedServiceAdditionalFields` | `AdditionalFieldDescriptorDto[]` |
+| `providedPrices()` | `getProvidedServicePrices` | `array` |
+| `saveProvided($payload)` | `saveProvidedService` (POST) | `SaveDocResponse` |
+
+### Inventories
+
+Access via `$fina->inventories()` — fixed assets (ძირითადი საშუალებები). Groups are `reference()->inventoryGroups()`.
+
+| Method | FINA Endpoint | Returns |
+|---|---|---|
+| `all()` | `getInventories` | `array` |
+| `additionalFields()` | `getInventoryAdditionalFields` | `AdditionalFieldDescriptorDto[]` |
+| `rest()` | `getInventoriesRest` | `array` |
+| `restByIds($ids)` | `getInventoriesRestArray` (POST) | `array` |
+| `restByStore($store)` | `getInventoriesRestByStore/{store}` | `array` |
+| `restAdvance($ids, $store = 0, $priceTypeId = 3)` | `getInventoriesRestAdvance` (POST) | `array` |
 
 ### Loyalty
 
@@ -344,8 +415,11 @@ Access via `$fina->documents()`.
 | `saveReceivedService($p)` | `saveDocReceivedService` | `ReceivedServicePayload` |
 | `saveBonusCard($p)` | `saveDocBonusCard` | `BonusCardPayload` |
 | `saveGiftPayment($p)` | `saveDocGiftPayment` | `GiftPaymentPayload` |
+| `saveDiscountCard($p)` | `saveDocDiscountCard` | *(raw array)* |
+| `saveGiftCard($p)` | `saveDocGiftCard` | *(raw array)* |
+| `updateRsStatus($operationId, $waybillId, $waybillStatus, $waybillNum)` | `updateRsStatus` | returns `RsStatusResponse` |
 
-> Last 3 save methods are new in v8.0.
+> `saveReceivedService`, `saveBonusCard`, `saveGiftPayment` are new in v8.0. `saveCustomerMoneyOut`, `saveVendorMoneyIn`, `saveVendorMoneyOut`, `saveVendorMoneyReturn` are **not documented** in the 8.0 PDF; they are kept for compatibility but unverified.
 
 **Get methods** -- return raw arrays or typed DTOs:
 
@@ -361,8 +435,18 @@ Access via `$fina->documents()`.
 | `getProductionTyped($id)` | `getDocProduction/{id}` | `ProductionDocDto` |
 | `getAutoService($id)` | `getDocAutoService/{id}` | `array` |
 | `getAutoServiceTyped($id)` | `getDocAutoService/{id}` | `AutoServiceDocDto` |
+| `getCustomerOrderTyped($id)` | `getDocCustomerOrder/{id}` | `CustomerOrderDocDto` |
+| `getProductOutTyped($id)` | `getDocProductOut/{id}` | `ProductOutDocDto` |
+| `getProductOutSingleTyped($id)` | `getDocProductOutSingle/{id}` | `ProductOutSingleDocDto` |
+| `getProductMoveTyped($id)` | `getDocProductMove/{id}` | `ProductMoveDocDto` |
+| `getCustomerReturnTyped($id)` | `getDocCustomerReturn/{id}` | `CustomerReturnDocDto` |
+| `getInventoryOut($id)` | `getDocInventoryOut/{id}` | `array` |
+| `getInventoryMove($id)` | `getDocInventoryMove/{id}` | `array` |
+| `getCustomerInventoryReturn($id)` | `getDocCustomerInventoryReturn/{id}` | `array` |
+| `getProvidedService($id)` | `getDocProvidedService/{id}` | `array` |
+| `getDiscountCard($id)` | `getDocDiscountCard/{id}` | `array` |
 
-> Last 2 methods are new in v8.0.
+> `getDocProductOut` / `getDocProductOutSingle` answer **400** until the document is verified in FINA. Typed document DTOs expose `products` as `DocProductLineDto[]` (`price`, `selfCost`, `outId` are nullable because each document type sends a different subset) and keep the full response in `raw`.
 
 **Generic methods** for any endpoint:
 
@@ -382,7 +466,7 @@ The Reporting API provides three access patterns for every endpoint:
 |---|---|---|
 | **Raw** | *(none)* | Returns the decoded JSON array as-is |
 | **Typed** | `Typed` | Maps response into typed DTO objects |
-| **Chunked + Typed** | `ChunkedTyped` | Splits large ranges, merges, deduplicates, returns typed DTOs |
+| **Chunked + Typed** | `ChunkedTyped` | Splits large ranges, merges, deduplicates per operation across chunks, returns typed DTOs |
 
 Access via `$fina->reporting()`.
 
@@ -399,7 +483,8 @@ Access via `$fina->reporting()`.
 | Discount Cards | `discountCardsJournal()` | `discountCardsJournalTyped()` | `discountCardsJournalChunkedTyped()` | `DiscountCardsJournalResponseDto` |
 | Provided Services | `providedServicesJournal()` | `providedServicesJournalTyped()` | `providedServicesJournalChunkedTyped()` | `ProvidedServicesJournalResponseDto` |
 | Received Services | `receivedServicesJournal()` | `receivedServicesJournalTyped()` | `receivedServicesJournalChunkedTyped()` | `ReceivedServicesJournalResponseDto` |
-| Realizes | `realizesJournal()` | -- | -- | -- |
+| Realizes | `realizesJournal()` | `realizesJournalTyped()` | `realizesJournalChunkedTyped()` | `RealizesJournalResponseDto` |
+| Moves | `movesJournal()` | `movesJournalTyped()` | `movesJournalChunkedTyped()` | `MovesJournalResponseDto` |
 | Auto Services Out | `autoServicesOutJournal()` | `autoServicesOutJournalTyped()` | `autoServicesOutJournalChunkedTyped()` | `AutoServicesOutJournalResponseDto` |
 
 > Auto Services Out is new in v8.0.
@@ -420,6 +505,8 @@ Access via `$fina->reporting()`.
 
 ```php
 $fina->journals()->entries($from, $to);
+$fina->journals()->realizes($from, $to);
+$fina->journals()->moves($from, $to);
 $fina->journals()->customersOrders($from, $to);
 $fina->journals()->autoServicesOut($from, $to); // v8.0
 ```
@@ -438,6 +525,8 @@ $fina->reporting()->getRangeChunked(
     dedupeKeyFn: fn (array $item) => $item['id'] . ':' . $item['version'],
 );
 ```
+
+Chunk windows touch at their boundary second, so an operation dated exactly on a boundary can be delivered twice. The merge keeps every row of the chunk it first appeared in and skips the whole operation when a later chunk re-sends it — rows are never deduplicated inside one window, which is what keeps every line of `getEntriesJournal`.
 
 ---
 
@@ -536,6 +625,16 @@ foreach ($dto->journals as $row) {
 | `AccountValueDetailDto` | Account debit/credit detail (v8.0) |
 | `AutoServiceDocDto` | Full auto-service document (v8.0) |
 | `ProductionDocDto` | Production document with materials |
+| `ProductOutDocDto` | Sale document (type 21) with `checkStatus`, typed lines |
+| `ProductOutSingleDocDto` | Retail sale document (type 23) |
+| `ProductMoveDocDto` | Internal move (type 20), cost-only lines |
+| `CustomerReturnDocDto` | Customer return (type 9), lines carry `outId` |
+| `CustomerOrderDocDto` | Customer order (type 8) |
+| `DocProductLineDto` / `DocServiceLineDto` | Lines of the typed documents |
+| `AdditionalFieldDescriptorDto` | `{name, header}` of every `*AdditionalFields` endpoint |
+| `AccountValueDto` | Debit/credit totals of `getAccountValue` |
+| `RsStatusResponse` | Result of `updateRsStatus` |
+| `RealizesJournalRowDto` / `MovesJournalRowDto` | Rows of the sales and moves journals |
 
 **Payload DTOs (Operation):**
 
@@ -668,6 +767,17 @@ composer ci
 | `NewDtoMappingTest` | 12 | | All v8.0 DTO mapping + edge cases |
 | `NewDtoValidationTest` | 8 | | v8.0 payload validation (valid + invalid) |
 | **Total** | **75** | **207** | |
+
+### Live integration suite (read-only)
+
+`tests/Integration/LiveFinaReadOnlyTest.php` runs against a real server when credentials are in the environment and is skipped otherwise:
+
+```bash
+FINA_LIVE_BASE_URL=http://host:5007 FINA_LIVE_LOGIN=... FINA_LIVE_PASSWORD=... \
+  vendor/bin/phpunit --testsuite Integration --display-incomplete
+```
+
+It only reads (GET and query-style POST endpoints); a request middleware aborts the run if any URL contains `/save` or `/update`. For every endpoint it checks that all keys documented in the 8.0 PDF are present in the live response and prints which endpoints your FINA build answers with 404.
 
 ### CI
 

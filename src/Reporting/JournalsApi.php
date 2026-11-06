@@ -105,6 +105,12 @@ final class JournalsApi extends BaseApi
         return $this->range('getRealizesJournal', $from, $to);
     }
 
+    /** getMovesJournal */
+    public function moves(DateTimeInterface $from, DateTimeInterface $to): array
+    {
+        return $this->range('getMovesJournal', $from, $to);
+    }
+
     /** getAutoServicesOutJournal (v8.0) */
     public function autoServicesOut(DateTimeInterface $from, DateTimeInterface $to): array
     {
