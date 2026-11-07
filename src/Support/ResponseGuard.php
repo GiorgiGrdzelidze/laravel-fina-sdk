@@ -28,7 +28,7 @@ final class ResponseGuard
     public static function throwIfEx(array $data, string $context = 'FINA response returned ex'): void
     {
         if (array_key_exists('ex', $data) && $data['ex'] !== null) {
-            throw new FinaRemoteException($data['ex'], $context);
+            throw new FinaRemoteException($data['ex'], $context, $data);
         }
     }
 }

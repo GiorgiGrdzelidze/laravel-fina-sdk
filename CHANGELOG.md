@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.3] - 2026-11-08
+
+### Added
+- `FinaRemoteException::$response`: the whole decoded body of the answer that carried `ex`. A save that FINA answers with an `id` and an `ex` at once can now be told apart from a refusal (`id` 0), so a caller never sends a saved document a second time. The constructor's new third argument defaults to `[]`; existing callers are unchanged.
+
 ## [0.2.2] - 2026-11-07
 
 ### Fixed

@@ -7,6 +7,7 @@ namespace Fina\Sdk\Laravel\Tests\Unit;
 use Carbon\CarbonImmutable;
 use Fina\Sdk\Laravel\Client\FinaClient;
 use Fina\Sdk\Laravel\Exceptions\FinaHttpException;
+use Fina\Sdk\Laravel\Exceptions\FinaRemoteException;
 use Fina\Sdk\Laravel\Exceptions\FinaValidationException;
 use Fina\Sdk\Laravel\Operation\Dto\CustomerMoneyInPayload;
 use Fina\Sdk\Laravel\Operation\Dto\CustomerMoneyReturnPayload;
@@ -169,5 +170,26 @@ final class WriteSafetyTest extends TestCase
         }
         PayloadValidator::validate($this->productOut(['wType' => 3, 'tType' => 7, 'tPayer' => 2]));
         $this->addToAssertionCount(1);
+    }
+
+    public function test_an_error_on_a_save_carries_the_whole_answer_including_the_id(): void
+    {
+        Http::fake([
+            '*/api/authentication/*' => Http::response(['token' => 'tok', 'ex' => null]),
+            '*/api/operation/saveDocProductOut' => Http::sequence()
+                ->push(['id' => 71351, 'ex' => 'saved with a warning'])
+                ->push(['id' => 0, 'ex' => 'terminal closed']),
+        ]);
+
+        foreach ([[71351, 'saved with a warning'], [0, 'terminal closed']] as [$id, $ex]) {
+            try {
+                $this->client()->documents()->saveProductOut($this->productOut());
+                $this->fail('expected a remote exception');
+            } catch (FinaRemoteException $e) {
+                $this->assertSame($ex, $e->ex);
+                $this->assertSame(['id' => $id, 'ex' => $ex], $e->response);
+            }
+        }
+        $this->assertSame(2, $this->sent('/saveDocProductOut'), 'each save went out once');
     }
 }
