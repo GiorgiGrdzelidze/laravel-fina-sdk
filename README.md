@@ -197,6 +197,7 @@ $response = $fina->documents()->saveProductOut(new ProductOutPayload(
     isVat: true, makeEntry: true,
     payType: 1, wType: 0, tType: 1, tPayer: 2, wCost: 0, foreign: false,
     products: [new ProductLine(id: 2, subId: 0, quantity: 3, price: 33.33)],
+    priceType: 3, // optional, FINA default 3 = retail
 ));
 
 $response->id; // saved document ID

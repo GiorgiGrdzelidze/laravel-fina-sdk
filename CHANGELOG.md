@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2026-11-07
+
+### Added
+- `ProductOutPayload::$priceType` (sent as `price_type`, the price type the sale is priced by). The 8.0 PDF documents it for `saveDocProductOut` with default 3 (retail); the payload never sent it. It is the last constructor argument with default 3, so existing named and positional callers are unchanged, and it must be ≥ 1.
+
 ## [0.2.0] - 2026-11-06
 
 Alignment with the FINA WEB API 8.0 documentation (8.0.20260303). All 138 documented methods are reachable; `tests/Unit/PdfParityTest.php` fails if one goes missing.

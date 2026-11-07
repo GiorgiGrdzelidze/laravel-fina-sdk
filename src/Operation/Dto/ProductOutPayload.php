@@ -62,6 +62,9 @@ final class ProductOutPayload implements ValidatesPayload
         public readonly array $products = [],
         /** @var ServiceLine[] */
         public readonly array $services = [],
+
+        // price type id the document is priced by (FINA default 3 = retail)
+        public readonly int $priceType = 3,
     ) {}
 
     public function toArray(): array
@@ -83,6 +86,7 @@ final class ProductOutPayload implements ValidatesPayload
             'is_vat' => $this->isVat,
             'make_entry' => $this->makeEntry,
             'pay_type' => $this->payType,
+            'price_type' => $this->priceType,
             'w_type' => $this->wType,
             't_type' => $this->tType,
             't_payer' => $this->tPayer,
@@ -118,6 +122,7 @@ final class ProductOutPayload implements ValidatesPayload
             'store' => ['required', 'integer', 'min:1'],
             'user' => ['required', 'integer', 'min:1'],
             'customer' => ['required', 'integer', 'min:1'],
+            'price_type' => ['required', 'integer', 'min:1'],
             'products' => ['required', 'array', 'min:1'],
             'products.*.id' => ['required', 'integer', 'min:1'],
             'products.*.quantity' => ['required', 'numeric', 'gt:0'],

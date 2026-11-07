@@ -7,10 +7,14 @@ namespace Fina\Sdk\Laravel\Tests\Unit;
 use Carbon\CarbonImmutable;
 use Fina\Sdk\Laravel\Client\FinaClient;
 use Fina\Sdk\Laravel\Exceptions\FinaRemoteException;
+use Fina\Sdk\Laravel\Exceptions\FinaValidationException;
 use Fina\Sdk\Laravel\Operation\Dto\AccountValueDto;
 use Fina\Sdk\Laravel\Operation\Dto\AdditionalFieldDescriptorDto;
+use Fina\Sdk\Laravel\Operation\Dto\ProductLine;
+use Fina\Sdk\Laravel\Operation\Dto\ProductOutPayload;
 use Fina\Sdk\Laravel\Operation\Dto\RsStatusResponse;
 use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
+use Fina\Sdk\Laravel\Support\PayloadValidator;
 use Fina\Sdk\Laravel\Tests\TestCase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -303,5 +307,71 @@ final class PdfOperationEndpointsTest extends TestCase
 
         $this->assertSame($client->services(), $client->services());
         $this->assertSame($client->inventories(), $client->inventories());
+    }
+
+    /** @param array<string, mixed> $overrides */
+    private function productOut(array $overrides = []): ProductOutPayload
+    {
+        return new ProductOutPayload(...array_merge([
+            'id' => 0,
+            'date' => CarbonImmutable::parse('2026-11-07 14:25:00'),
+            'numPrefix' => '',
+            'num' => 0,
+            'purpose' => 'L261107-00001',
+            'amount' => 35.7,
+            'currency' => 'GEL',
+            'rate' => 1.0,
+            'store' => 2,
+            'user' => 1,
+            'staff' => 0,
+            'project' => 0,
+            'customer' => 8,
+            'isVat' => true,
+            'makeEntry' => true,
+            'payType' => 1,
+            'wType' => 0,
+            'tType' => 0,
+            'tPayer' => 0,
+            'wCost' => 0.0,
+            'foreign' => false,
+            'products' => [new ProductLine(id: 2, quantity: 1.0, price: 35.7)],
+        ], $overrides));
+    }
+
+    public function test_product_out_sends_the_documented_price_type_defaulting_to_retail(): void
+    {
+        $this->assertSame(3, $this->productOut()->toArray()['price_type'], 'PDF: price_type default 3 (retail)');
+
+        $this->fake('saveDocProductOut', ['id' => 991, 'ex' => null]);
+        $saved = $this->client()->documents()->saveProductOut($this->productOut(['priceType' => 10]));
+
+        $this->assertSame(991, $saved->id);
+        Http::assertSent(function (Request $r) {
+            $body = json_decode($r->body(), true);
+
+            return $r->method() === 'POST'
+                && $r->url() === self::BASE.'saveDocProductOut'
+                && $body['price_type'] === 10
+                && $body['pay_type'] === 1
+                && $body['products'] === [['id' => 2, 'sub_id' => 0, 'quantity' => 1, 'price' => 35.7]];
+        });
+    }
+
+    public function test_product_out_refuses_a_price_type_below_one(): void
+    {
+        $this->expectException(FinaValidationException::class);
+        PayloadValidator::validate($this->productOut(['priceType' => 0]));
+    }
+
+    public function test_product_out_positional_callers_keep_working(): void
+    {
+        $line = new ProductLine(2, 0, 1.0, 35.7);
+        $payload = new ProductOutPayload(
+            0, CarbonImmutable::parse('2026-11-07 14:25:00'), '', 0, 'x', 35.7, 'GEL', 1.0, 2, 1, 0, 0, 8, true, true, 1, 0, 0, 0, 0.0, false,
+            null, null, null, null, null, null, null, null, null, 0, 0.0, [], [$line], [],
+        );
+
+        $this->assertSame(3, $payload->toArray()['price_type']);
+        $this->assertSame(35.7, $payload->toArray()['products'][0]['price']);
     }
 }
