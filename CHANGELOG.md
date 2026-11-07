@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2026-11-07
+
+### Fixed
+- Writes (`save*` / `update*`) are no longer repeated by the HTTP transport. With `retry_times` above 0 every request went through Laravel's `retry()`, so a `saveDoc*` that timed out or got a 5xx after FINA had already saved it was posted again and created a second document. Reads and query POSTs (`getProductsArray` and the like) are still retried. A 401 on a write still refreshes the token and resends once: FINA did not process the request. New `FinaClient::isWrite()`.
+- `staff` may be 0 on every document payload, as the PDF documents it (0 = the user's linked staff). `CustomerReturnPayload`, `CustomerMoneyReturnPayload`, the money payloads, `ProductMovePayload`, `ProductCancelPayload`, `BonusPaymentPayload` and `ProvidedServicePayload` required ≥ 1.
+- `ProductOutPayload` refuses `w_type` other than 2/3, `t_type` outside 1/2/3/4/6/7 and `t_payer` other than 1/2 before sending — FINA answers these with HTTP 400 even on a sale without a waybill. `CustomerReturnPayload` checks `t_type` / `t_payer` the same way (its rule list also had them twice).
+
 ## [0.2.1] - 2026-11-07
 
 ### Added

@@ -66,7 +66,7 @@ final class BonusPaymentPayload implements ValidatesPayload
             'rate' => ['required', 'numeric', 'gt:0'],
             'store' => ['required', 'integer', 'min:1'],
             'user' => ['required', 'integer', 'min:1'],
-            'staff' => ['required', 'integer', 'min:1'],
+            'staff' => ['required', 'integer', 'min:0'],
             'project' => ['required', 'integer', 'min:0'],
             'customer' => ['required', 'integer', 'min:1'],
             'ref_id' => ['required', 'integer', 'min:0'],

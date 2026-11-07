@@ -101,7 +101,9 @@ final class CustomerReturnPayload implements ValidatesPayload
 
             'store' => ['required', 'integer', 'min:1'],
             'user' => ['required', 'integer', 'min:1'],
-            'staff' => ['required', 'integer', 'min:1'],
+            'staff' => ['required', 'integer', 'min:0'],
+            't_type' => ['required', 'integer', 'in:1,2,3,4,6,7'],
+            't_payer' => ['required', 'integer', 'in:1,2'],
             'project' => ['required', 'integer', 'min:0'],
             'customer' => ['required', 'integer', 'min:1'],
 
@@ -109,8 +111,6 @@ final class CustomerReturnPayload implements ValidatesPayload
             'make_entry' => ['required', 'boolean'],
             'pay_type' => ['required', 'integer', 'min:0'],
 
-            't_type' => ['required', 'integer', 'min:0'],
-            't_payer' => ['required', 'integer', 'min:0'],
             'w_cost' => ['required', 'numeric', 'gte:0'],
             'foreign' => ['required', 'boolean'],
 

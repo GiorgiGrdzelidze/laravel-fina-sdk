@@ -86,7 +86,7 @@ final class ProvidedServicePayload implements ValidatesPayload
 
             'store' => ['required', 'integer', 'min:1'],
             'user' => ['required', 'integer', 'min:1'],
-            'staff' => ['required', 'integer', 'min:1'],
+            'staff' => ['required', 'integer', 'min:0'],
             'project' => ['required', 'integer', 'min:0'],
             'customer' => ['required', 'integer', 'min:1'],
 

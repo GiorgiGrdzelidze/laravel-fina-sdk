@@ -90,7 +90,7 @@ final class ProductMovePayload implements ValidatesPayload
             'store_from' => ['required', 'integer', 'min:1'],
             'store_to' => ['required', 'integer', 'min:1', 'different:store_from'],
             'user' => ['required', 'integer', 'min:1'],
-            'staff' => ['required', 'integer', 'min:1'],
+            'staff' => ['required', 'integer', 'min:0'],
 
             'make_entry' => ['required', 'boolean'],
             't_type' => ['required', 'integer', 'min:0'],

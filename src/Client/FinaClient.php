@@ -144,7 +144,7 @@ final class FinaClient
      *
      * @param  string|null  $token  Optional bearer token to attach.
      */
-    public function http(?string $token = null): PendingRequest
+    public function http(?string $token = null, bool $retry = true): PendingRequest
     {
         $timeout = (int) ($this->config['timeout'] ?? 120);
         $retryTimes = (int) ($this->config['retry_times'] ?? 2);
@@ -153,8 +153,11 @@ final class FinaClient
         $req = Http::acceptJson()
             ->asJson()
             ->timeout($timeout)
-            ->retry($retryTimes, $retrySleepMs)
             ->baseUrl($this->baseUrl());
+
+        if ($retry && $retryTimes > 0) {
+            $req = $req->retry($retryTimes, $retrySleepMs);
+        }
 
         if ($token) {
             $req = $req->withToken($token);
@@ -218,9 +221,20 @@ final class FinaClient
         }
     }
 
+    /**
+     * Whether a request writes to FINA (save* / update*). A write is never repeated by the
+     * transport: a timeout or a 5xx after FINA saved the document would create it twice.
+     */
+    public static function isWrite(string $method, string $url): bool
+    {
+        $last = strtolower((string) basename((string) parse_url($url, PHP_URL_PATH)));
+
+        return strtolower($method) !== 'get' && (str_starts_with($last, 'save') || str_starts_with($last, 'update'));
+    }
+
     private function send(string $method, string $url, string $token, array $data = []): Response
     {
-        $req = $this->http($token);
+        $req = $this->http($token, retry: ! self::isWrite($method, $url));
 
         return match (strtolower($method)) {
             'get' => $req->get($url, $data),

@@ -195,7 +195,7 @@ $response = $fina->documents()->saveProductOut(new ProductOutPayload(
     currency: 'GEL', rate: 1.0,
     store: 1, user: 1, staff: 1, project: 0, customer: 8,
     isVat: true, makeEntry: true,
-    payType: 1, wType: 0, tType: 1, tPayer: 2, wCost: 0, foreign: false,
+    payType: 1, wType: 2, tType: 1, tPayer: 1, wCost: 0, foreign: false,
     products: [new ProductLine(id: 2, subId: 0, quantity: 3, price: 33.33)],
     priceType: 3, // optional, FINA default 3 = retail
 ));
@@ -723,6 +723,10 @@ When a request gets a `401`, the SDK automatically:
 3. Retries the request **once**
 
 If the retry also fails, a `FinaHttpException` is thrown.
+
+### Retries and writes
+
+`retry_times` / `retry_sleep_ms` apply to reads and query POSTs only. A write (`save*` / `update*`) is sent once: if it times out or gets a 5xx, FINA may already have saved it, and repeating it would create a second document. Look the document up in the matching journal before sending it again. `FinaClient::isWrite($method, $url)` tells the two apart.
 
 ---
 

@@ -123,6 +123,10 @@ final class ProductOutPayload implements ValidatesPayload
             'user' => ['required', 'integer', 'min:1'],
             'customer' => ['required', 'integer', 'min:1'],
             'price_type' => ['required', 'integer', 'min:1'],
+            // FINA refuses anything else even on a sale without a waybill (HTTP 400)
+            'w_type' => ['required', 'integer', 'in:2,3'],
+            't_type' => ['required', 'integer', 'in:1,2,3,4,6,7'],
+            't_payer' => ['required', 'integer', 'in:1,2'],
             'products' => ['required', 'array', 'min:1'],
             'products.*.id' => ['required', 'integer', 'min:1'],
             'products.*.quantity' => ['required', 'numeric', 'gt:0'],

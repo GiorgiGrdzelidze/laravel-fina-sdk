@@ -92,7 +92,7 @@ abstract class AbstractMoneyPayload implements ValidatesPayload
 
             'store' => ['required', 'integer', 'min:1'],
             'user' => ['required', 'integer', 'min:1'],
-            'staff' => ['required', 'integer', 'min:1'],
+            'staff' => ['required', 'integer', 'min:0'],
             'project' => ['required', 'integer', 'min:0'],
 
             'pay_type' => ['required', 'integer', 'min:0'],
