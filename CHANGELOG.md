@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.4] - 2026-11-09
+
+### Changed
+- `ProductOutPayload::$customer` may be 0. FINA's own till books every retail sale to customer 0 ("საცალო გაყიდვების ტრანზიტული ანგარიში"; the `getRealizesJournal` example in the 8.0 PDF, p. 196, shows a type-23 sale with `customer_id` 0), and the PDF puts no lower bound on `customer`. Negative ids are still refused. The other payloads keep `customer ≥ 1` until FINA's answer to a 0 is known.
+
 ## [0.2.3] - 2026-11-08
 
 ### Added
