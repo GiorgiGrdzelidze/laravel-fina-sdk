@@ -127,16 +127,15 @@ final class WriteSafetyTest extends TestCase
         $this->assertFalse(FinaClient::isWrite('get', '/api/operation/getDocProductOut/5'));
     }
 
-    public function test_a_sale_may_go_to_customer_zero_finas_own_retail_buyer(): void
+    public function test_a_sale_never_goes_to_customer_zero(): void
     {
-        $sale = fn (int $customer) => $this->productOut(['customer' => $customer]);
-
-        // FINA's own till books every retail sale to customer 0 (getRealizesJournal, PDF p. 196)
-        PayloadValidator::validate($sale(0));
+        // FINA's own till books retail sales to customer 0, but its API refuses it:
+        // HTTP 400 {"errors":{"CustomerId":["The field customer is invalid."]}} (tried 2026-11-09)
+        PayloadValidator::validate($this->productOut(['customer' => 1]));
         $this->addToAssertionCount(1);
 
         $this->expectException(FinaValidationException::class);
-        PayloadValidator::validate($sale(-1));
+        PayloadValidator::validate($this->productOut(['customer' => 0]));
     }
 
     public function test_staff_zero_means_the_users_linked_staff_on_every_document(): void

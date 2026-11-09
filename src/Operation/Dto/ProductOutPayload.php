@@ -121,7 +121,8 @@ final class ProductOutPayload implements ValidatesPayload
             'rate' => ['required', 'numeric'],
             'store' => ['required', 'integer', 'min:1'],
             'user' => ['required', 'integer', 'min:1'],
-            'customer' => ['required', 'integer', 'min:0'],
+            // FINA's API refuses customer 0 (HTTP 400 "The field customer is invalid."), though its own till uses it
+            'customer' => ['required', 'integer', 'min:1'],
             'price_type' => ['required', 'integer', 'min:1'],
             // FINA refuses anything else even on a sale without a waybill (HTTP 400)
             'w_type' => ['required', 'integer', 'in:2,3'],

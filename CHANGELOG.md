@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.5] - 2026-11-09
+
+### Changed
+- `ProductOutPayload::$customer` must be ≥ 1 again. A real `saveDocProductOut` with customer 0 came back HTTP 400 `{"errors":{"CustomerId":["The field customer is invalid."]}}` (nothing was saved), although FINA's own till books retail sales to customer 0. Refusing it before sending keeps a wrong setting from reaching FINA. Walk-in sales need a customer of their own.
+
 ## [0.2.4] - 2026-11-09
 
 ### Changed
