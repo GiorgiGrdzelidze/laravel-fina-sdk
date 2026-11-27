@@ -6,12 +6,13 @@
 [![Laravel Version](https://img.shields.io/badge/laravel-%3E%3D12.0-FF2D20)](https://laravel.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A production-ready Laravel SDK for the **FINA Web API v8.0**. Handles authentication, token caching, typed DTOs, request validation, chunked reporting with deduplication, and structured error handling out of the box.
+A production-ready Laravel SDK for the **FINA Web API v10.0** (10.0.20261106). Handles authentication, token caching, typed DTOs, request validation, chunked reporting with deduplication, and structured error handling out of the box.
 
 ---
 
 ## Table of Contents
 
+- [What's New in 0.3.0](#whats-new-in-030)
 - [What's New in 0.2.0](#whats-new-in-020)
 - [What's New in v8.0](#whats-new-in-v80)
 - [Features](#features)
@@ -35,6 +36,24 @@ A production-ready Laravel SDK for the **FINA Web API v8.0**. Handles authentica
 - [Testing & Quality](#testing--quality)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
+
+---
+
+## What's New in 0.3.0
+
+Alignment with the **FINA WEB API 10.0** documentation (10.0.20261106): its 154 methods are all reachable (16 are new), and every field it adds is typed except `waybill_status` on the three inventory documents (`getDocInventoryOut`, `getDocInventoryMove`, `getDocCustomerInventoryReturn`), which have no typed DTO and carry it in their raw arrays. Existing calls send byte-identical requests.
+
+| Area | Change |
+|---|---|
+| **General** | Optional `FINA_TENANT_KEY`, sent as the `tenant_key` header (MultiTenant FINA) on every request, authenticate included; a tenant gets its own token and doc-types cache, and a key with a control character is refused. `authenticate`'s `valid_to`, read as UTC, sets the token cache lifetime (an hour before it, never longer than `FINA_TOKEN_TTL`; 60 seconds when it is past or less than an hour away) |
+| **Loyalty (Cloud)** | `customers()`, `customer($id)`, `customerPrograms()`, `customerGroups()`, `customerBalances()`, `customerBalance($qrCode)`, `bonusHistory($qrCode)`; `saveCustomer()`, `saveGroup()`, `saveBonusPoint()`; `saveDiscountOperation()` (`saveDocDiscountOperation`) |
+| **Documents** | `getAdvProduction()` / `getAdvProductionTyped()`, `saveAdvProduction()` (complex production / disassembly), `fulfillCustomerOrder()` (customer order to sale); `waybillStatus` on the typed sale, move, customer return and auto-service documents (`WaybillStatus` codes) |
+| **Reference / services** | `storesTyped()` (`add_fields`), `storeAdditionalFields()`, `services()->consumptionMaterials()`; `customers()` / `vendors()` `allTyped()` and `getByCodeTyped()` (`birthDate`, `marketingPromotions`) |
+| **Reporting** | `refId` on realizes and customers-money journal rows; `userId`, `guestCount` on cafe order report rows |
+| **Payloads** | `ProductOutPayload::$giftOverlap` (1 on pay type 5 only, 0 on any), `ServiceLine::$consumedMaterials` (provided services only), price on move lines validated; new `DiscountCardPayload` (`person_*`), `ContragentPayload` (`marketing_promotions`), `ProductPayload` + `ProductPriceLine` (`currency`, `discount_*`) |
+| **Write safety** | `fulfillmentCustomerOrder` is a write like `save*` / `update*`: never repeated by the transport, blocked by the live suite's guard |
+
+A field the answer does not carry is `null` on the DTO, never 0, false, `''` or an empty list. That holds for the fields 10.0 adds to existing methods (`waybillStatus`, `refId`, `addFields` …) and for every field of the DTOs new in 0.3.0 except the id of a document line or of a reference row (store, contragent, program, group, enrolment), which stays an `int` as in the older DTOs; the id of a loyalty card or balance is `null` when not sent, in a list too; `customer()`, `customerBalance()` and `getAdvProductionTyped()` answer a missing object with every field `null`, the id included. So an older server is never read as "saved" or "no marketing consent", a `saveDocDiscountOperation` answer without `res` is not "not applied", and a card read from `customers()` (the list sends no programs or groups) and saved back through `LoyaltyCustomerPayload` keeps its programs and groups.
 
 ---
 
@@ -82,7 +101,7 @@ Existing endpoints are unchanged -- the upgrade is fully backwards-compatible.
 
 | Feature | Description |
 |---|---|
-| **Auto-authentication** | Fetches, caches (~35h TTL), and transparently refreshes tokens on 401 |
+| **Auto-authentication** | Fetches, caches (until an hour before `valid_to`, read as UTC, at most ~35h), and transparently refreshes tokens on 401 |
 | **Configurable HTTP** | Timeout, retry count, and retry delay via `.env` |
 | **8 API clients** | Customers, Vendors, Products, Documents, Loyalty, Reference, Journals, Reporting |
 | **Chunked reporting** | Splits large date ranges into windows, merges, drops operations already delivered by an earlier window (`id+version`), keeps every line of multi-line journals |
@@ -97,7 +116,7 @@ Existing endpoints are unchanged -- the upgrade is fully backwards-compatible.
 
 - **PHP** >= 8.2
 - **Laravel** >= 12.0
-- A running **FINA Web API v8.0** instance
+- A running **FINA Web API** instance; methods follow the 10.0 documentation, and an older build answers 404 for the methods it does not have
 
 ---
 
@@ -152,11 +171,14 @@ php artisan vendor:publish --tag=fina-config
 | `FINA_BASE_URL` | *(required)* | FINA instance URL (scheme + host + port) |
 | `FINA_LOGIN` | *(required)* | API login |
 | `FINA_PASSWORD` | *(required)* | API password |
+| `FINA_TENANT_KEY` | *(empty)* | MultiTenant FINA only: sent as the `tenant_key` header on every request, authenticate included. Empty: no header |
 | `FINA_TIMEOUT` | `120` | HTTP timeout (seconds) |
-| `FINA_RETRY_TIMES` | `2` | Retries on transient failure |
+| `FINA_RETRY_TIMES` | `2` | Retries on transient failure (reads only) |
 | `FINA_RETRY_SLEEP_MS` | `300` | Delay between retries (ms) |
-| `FINA_TOKEN_TTL` | `126000` | Token cache lifetime (seconds, ~35h) |
+| `FINA_TOKEN_TTL` | `126000` | Token cache lifetime (seconds, ~35h). When `authenticate` returns `valid_to`, the token is dropped an hour before it, never later than this; a `valid_to` already past or less than an hour away keeps it 60 seconds |
 | `FINA_DOC_TYPES_TTL` | `3600` | Doc-types cache lifetime (seconds) |
+
+`valid_to` carries no time zone in the 10.0 document, and a real FINA sends it in UTC: `2026-11-28T10:54:07` came in an answer whose `Date` header was `Thu, 26 Nov 2026 22:54:06 GMT`, 36 hours earlier. A value without a zone is therefore read as UTC, whatever `app.timezone` is; a value with its own offset or `Z` keeps it. A `valid_to` that is already past or less than an hour away keeps the token 60 seconds, so the next call after that logs in again; a missing or unreadable one leaves the fixed `FINA_TOKEN_TTL`. A token that expired anyway is refreshed on its first 401. A `tenant_key` holding a control character (CR, LF, NUL, any byte below 0x20, or 0x7F) is refused when the client is built, with a `FinaConfigException` that does not repeat it. A proxy in front of FINA must pass headers with underscores (nginx: `underscores_in_headers on;`) for `tenant_key` to arrive.
 
 ---
 
@@ -231,16 +253,18 @@ Access via `$fina->customers()`.
 | Method | FINA Endpoint | Returns |
 |---|---|---|
 | `all()` | `getCustomers` | `array` |
+| `allTyped()` | `getCustomers` | `ContragentDto[]` |
 | `getByCode($code)` | `getCustomersByCode/{code}` | `array` |
+| `getByCodeTyped($code)` | `getCustomersByCode/{code}` | `ContragentDto[]` |
 | `groups()` | `getCustomerGroups` | `array` |
 | `addresses()` | `getCustomerAddresses` | `array` |
 | `additionalFields()` | `getCustomerAdditionalFields` | `array` |
 | `agreements()` | `getCustomerAgreements` | `CustomerAgreementDto[]` |
 | `subAccountFields()` | `getContragentSubAccountFields` | `ContragentSubAccountFieldDto[]` |
 | `subAccounts()` | `getCustomerSubAccounts` | `ContragentSubAccountDto[]` |
-| `save($payload)` | `saveCustomer` (POST) | `SaveDocResponse` |
+| `save($payload)` | `saveCustomer` (POST) | `SaveDocResponse` (payload: `ContragentPayload` or array) |
 
-> `agreements()`, `subAccountFields()`, `subAccounts()` are new in v8.0.
+> `agreements()`, `subAccountFields()`, `subAccounts()` are new in v8.0; `allTyped()`, `getByCodeTyped()` (with `birthDate`, `marketingPromotions`) in 0.3.0.
 
 ### Vendors
 
@@ -249,14 +273,16 @@ Access via `$fina->vendors()`.
 | Method | FINA Endpoint | Returns |
 |---|---|---|
 | `all()` | `getVendors` | `array` |
+| `allTyped()` | `getVendors` | `ContragentDto[]` |
 | `getByCode($code)` | `getVendorsByCode/{code}` | `array` |
+| `getByCodeTyped($code)` | `getVendorsByCode/{code}` | `ContragentDto[]` |
 | `groups()` | `getVendorGroups` | `array` |
 | `addresses()` | `getVendorAddresses` | `array` |
 | `additionalFields()` | `getVendorAdditionalFields` | `array` |
 | `subAccounts()` | `getVendorSubAccounts` | `ContragentSubAccountDto[]` |
-| `save($payload)` | `saveVendor` (POST) | `SaveDocResponse` |
+| `save($payload)` | `saveVendor` (POST) | `SaveDocResponse` (payload: `ContragentPayload` or array) |
 
-> `subAccounts()` is new in v8.0.
+> `subAccounts()` is new in v8.0; `allTyped()`, `getByCodeTyped()` in 0.3.0.
 
 ### Products
 
@@ -295,9 +321,9 @@ Access via `$fina->products()`.
 | `onWay()` | `getProductsOnWay` | `array` |
 | `additionalFields()` | `getProductAdditionalFields` | `AdditionalFieldDescriptorDto[]` |
 | `providedServicePrices()` | `getProvidedServicePrices` | `array` |
-| `save($payload)` | `saveProduct` (POST) | `SaveDocResponse` |
+| `save($payload)` | `saveProduct` (POST) | `SaveDocResponse` (payload: `ProductPayload` or array) |
 
-> `getProductsRest.rest` is already net of `reserve`. `restSummary()` is the stock at a given date; `selfCost()` the average cost at a given date.
+> `getProductsRest.rest` is already net of `reserve`. `restSummary()` is the stock at a given date; `selfCost()` the average cost at a given date. In `saveProduct` a non-null `barcodes` or `images` replaces the product's existing ones; `ProductPayload` sends them only when given.
 
 ### Reference Data
 
@@ -345,9 +371,11 @@ Access via `$fina->reference()`.
 | `accountValue($primaryAcc, $date, $obj = 0, $secondaryAcc = '', $isGel = true)` | `AccountValueDto` (POST) |
 | `staffAdditionalFields()` | `AdditionalFieldDescriptorDto[]` |
 | `docAdditionalFields($docType)` | `AdditionalFieldDescriptorDto[]` |
+| `storesTyped()` | `StoreDto[]` (`getStores`, with `addFields`) |
+| `storeAdditionalFields()` | `AdditionalFieldDescriptorDto[]` (`getStoreAdditionalFields`) |
 | `saveStaff($payload)` | `SaveDocResponse` (POST `saveStaff`) |
 
-> `transportationMeans()` and `accountValueDetails()` are new in v8.0.
+> `transportationMeans()` and `accountValueDetails()` are new in v8.0; `storesTyped()` and `storeAdditionalFields()` in 0.3.0.
 
 ### Services
 
@@ -359,7 +387,10 @@ Access via `$fina->services()` — the service *catalogs*; service documents liv
 | `received()` | `getReceivedServices` | `array` |
 | `providedAdditionalFields()` | `getProvidedServiceAdditionalFields` | `AdditionalFieldDescriptorDto[]` |
 | `providedPrices()` | `getProvidedServicePrices` | `array` |
+| `consumptionMaterials()` | `getServiceConsumptionMaterials` | `ServiceConsumptionDto[]` |
 | `saveProvided($payload)` | `saveProvidedService` (POST) | `SaveDocResponse` |
+
+> `consumptionMaterials()` is new in 0.3.0: the products each provided service uses up.
 
 ### Inventories
 
@@ -383,10 +414,21 @@ Access via `$fina->loyalty()`.
 | `bonusCoeff()` | `getBonusCoeff` | `BonusCoeffResponse` |
 | `cardsByHolder($code)` | `getLoyaltyCardsByHolder/{code}` | `array` |
 | `saveBonusOperation($payload)` | `saveDocBonusOperation` | `BonusOperationResponse` |
+| `saveDiscountOperation($payload)` | `saveDocDiscountOperation` | `DiscountOperationResponse` (payload: `DiscountOperationPayload`) |
 | `giftCardInfoByCode($code)` | `getGiftCardInfoByCode/{code}` | `GiftCardInfoDto` |
 | `bonusCardRestByCode($code)` | `getBonusCardRestByCode/{code}` | `array` |
+| `customers()` | `getLoyaltyCustomers` | `LoyaltyCustomerDto[]` |
+| `customer($id)` | `getLoyaltyCustomer/{id}` | `LoyaltyCustomerDto` (with programs and groups) |
+| `customerPrograms()` | `getLoyaltyCustomerPrograms` | `LoyaltyProgramDto[]` |
+| `customerGroups()` | `getLoyaltyCustomerGroups` | `LoyaltyGroupDto[]` |
+| `customerBalances()` | `getLoyaltyCustomerBalances` | `LoyaltyBalanceDto[]` |
+| `customerBalance($qrCode)` | `getLoyaltyCustomerBalance/{qr_code}` | `LoyaltyBalanceDto` |
+| `bonusHistory($qrCode)` | `getLoyaltyBonusHistory/{qr_code}` | `LoyaltyBonusHistoryDto[]` |
+| `saveCustomer($payload)` | `saveLoyaltyCustomer` | `SaveDocResponse` (payload: `LoyaltyCustomerPayload`) |
+| `saveGroup($payload)` | `saveLoyaltyGroup` | `SaveDocResponse` (payload: `LoyaltyGroupPayload`) |
+| `saveBonusPoint($payload)` | `saveLoyaltyBonusPoint` | `SaveDocResponse` (payload: `LoyaltyBonusPointPayload`) |
 
-> Last 2 methods are new in v8.0.
+> `giftCardInfoByCode()` and `bonusCardRestByCode()` are new in v8.0. The loyalty (Cloud) methods from `customers()` down and `saveDiscountOperation()` are new in 0.3.0 (API 10.0). In `saveLoyaltyCustomer` a non-null `loyaltyPrograms` / `loyaltyGroups` becomes the card's whole list (FINA inserts, updates and deletes to match); leave them null to keep what the card has. A card from `customers()` has them `null` (the list does not send them), so passing them on keeps the card's lists; `customer($id)` carries them. `saveDocDiscountOperation` answers `{res, ex}` per the document; `DiscountOperationResponse::$res` is `null` when the answer has no `res` (unknown, not a refusal: do not send the operation again on it), and `$raw` keeps the whole answer.
 
 ### Documents
 
@@ -413,14 +455,16 @@ Access via `$fina->documents()`.
 | `saveVendorMoneyOut($p)` | `saveDocVendorMoneyOut` | `VendorMoneyOutPayload` |
 | `saveVendorMoneyReturn($p)` | `saveDocVendorMoneyReturn` | `VendorMoneyReturnPayload` |
 | `saveProduction($p)` | `saveDocProduction` | `SaveProductionPayload` / `ProductionPayload` |
+| `saveAdvProduction($p)` | `saveDocAdvProduction` | `AdvProductionPayload` |
 | `saveReceivedService($p)` | `saveDocReceivedService` | `ReceivedServicePayload` |
 | `saveBonusCard($p)` | `saveDocBonusCard` | `BonusCardPayload` |
 | `saveGiftPayment($p)` | `saveDocGiftPayment` | `GiftPaymentPayload` |
-| `saveDiscountCard($p)` | `saveDocDiscountCard` | *(raw array)* |
+| `saveDiscountCard($p)` | `saveDocDiscountCard` | `DiscountCardPayload` or raw array |
 | `saveGiftCard($p)` | `saveDocGiftCard` | *(raw array)* |
+| `fulfillCustomerOrder($orderId)` | `fulfillmentCustomerOrder` | `int` or `CustomerOrderFulfillmentPayload`; `->id` is the sale FINA made from the order |
 | `updateRsStatus($operationId, $waybillId, $waybillStatus, $waybillNum)` | `updateRsStatus` | returns `RsStatusResponse` |
 
-> `saveReceivedService`, `saveBonusCard`, `saveGiftPayment` are new in v8.0. `saveCustomerMoneyOut`, `saveVendorMoneyIn`, `saveVendorMoneyOut`, `saveVendorMoneyReturn` are **not documented** in the 8.0 PDF; they are kept for compatibility but unverified.
+> `saveReceivedService`, `saveBonusCard`, `saveGiftPayment` are new in v8.0; `saveAdvProduction`, `fulfillCustomerOrder` and `DiscountCardPayload` in 0.3.0. `ProductOutPayload::$giftOverlap` 1 is refused unless `payType` is 5 (free of charge), the only pay type the document says it acts on; 0 is accepted on any pay type, as the document's own example sends it with pay type 1, and null is not sent. `ServiceLine::$consumedMaterials` is accepted on `ProvidedServicePayload` only; the sale, received-service and cafe payloads refuse it, an empty list included. `saveCustomerMoneyOut`, `saveVendorMoneyIn`, `saveVendorMoneyOut`, `saveVendorMoneyReturn` are **not documented** in the 8.0 PDF; they are kept for compatibility but unverified.
 
 **Get methods** -- return raw arrays or typed DTOs:
 
@@ -446,8 +490,10 @@ Access via `$fina->documents()`.
 | `getCustomerInventoryReturn($id)` | `getDocCustomerInventoryReturn/{id}` | `array` |
 | `getProvidedService($id)` | `getDocProvidedService/{id}` | `array` |
 | `getDiscountCard($id)` | `getDocDiscountCard/{id}` | `array` |
+| `getAdvProduction($id)` | `getDocAdvProduction/{id}` | `array` |
+| `getAdvProductionTyped($id)` | `getDocAdvProduction/{id}` | `AdvProductionDocDto` |
 
-> `getDocProductOut` / `getDocProductOutSingle` answer **400** until the document is verified in FINA. Typed document DTOs expose `products` as `DocProductLineDto[]` (`price`, `selfCost`, `outId` are nullable because each document type sends a different subset) and keep the full response in `raw`.
+> `getDocProductOut` / `getDocProductOutSingle` answer **400** until the document is verified in FINA. Typed document DTOs expose `products` as `DocProductLineDto[]` (`price`, `selfCost`, `outId` are nullable because each document type sends a different subset) and keep the full response in `raw`. `ProductOutDocDto`, `ProductMoveDocDto`, `CustomerReturnDocDto` and `AutoServiceDocDto` carry `waybillStatus` (10.0), one of the `WaybillStatus` codes: `NONE` -1, `SAVED` 0, `ACTIVATED` 1, `COMPLETED` 2, `WITH_CARRIER` 8, `CANCELLED` -2; `null` when your FINA build does not send it. The raw inventory documents carry it as `waybill_status`; `getDocProductOutSingle` and the journals do not have it.
 
 **Generic methods** for any endpoint:
 
@@ -488,7 +534,7 @@ Access via `$fina->reporting()`.
 | Moves | `movesJournal()` | `movesJournalTyped()` | `movesJournalChunkedTyped()` | `MovesJournalResponseDto` |
 | Auto Services Out | `autoServicesOutJournal()` | `autoServicesOutJournalTyped()` | `autoServicesOutJournalChunkedTyped()` | `AutoServicesOutJournalResponseDto` |
 
-> Auto Services Out is new in v8.0.
+> Auto Services Out is new in v8.0. Realizes and Customers Money rows carry `refId` (10.0): the customer order a sale was made from, or the FINA operation money was received or returned for; 0 when none, `null` when your build does not send it (the vendors money journal never does).
 
 **Reports:**
 
@@ -500,7 +546,7 @@ Access via `$fina->reporting()`.
 | Products In/Return | `productsInReturnReport()` | `productsInReturnReportTyped()` | `ProductsInReturnReportResponseDto` |
 | Cafe Order Detailed | `cafeOrderDetailedReport()` | `cafeOrderDetailedReportTyped()` | `CafeOrderDetailedReportResponseDto` |
 
-> Cafe Order Detailed is new in v8.0.
+> Cafe Order Detailed is new in v8.0; its rows carry `userId` (the waiter) and `guestCount` from 10.0.
 
 **Low-level Journals API** -- access via `$fina->journals()` for simple date-range queries:
 
@@ -543,7 +589,7 @@ ArrayPayload          -- toArray() for serialisation
 ValidatesPayload      -- adds rules(), messages(), attributes()
 ```
 
-When you pass a `ValidatesPayload` to any `save*` method, it is validated automatically before the HTTP request. On failure, a `FinaValidationException` is thrown -- no request is made.
+When you pass a `ValidatesPayload` to any `save*` method (or `fulfillCustomerOrder()`), it is validated automatically before the HTTP request. On failure, a `FinaValidationException` is thrown -- no request is made.
 
 ### Example: save with validation
 
@@ -636,6 +682,16 @@ foreach ($dto->journals as $row) {
 | `AccountValueDto` | Debit/credit totals of `getAccountValue` |
 | `RsStatusResponse` | Result of `updateRsStatus` |
 | `RealizesJournalRowDto` / `MovesJournalRowDto` | Rows of the sales and moves journals |
+| `DiscountOperationResponse` | Result of `saveDocDiscountOperation` (`res`, null when absent; `ex`, `raw`) (0.3.0) |
+| `StoreDto` | Store with `addFields` (0.3.0) |
+| `ContragentDto` | Customer / vendor with `birthDate`, `marketingPromotions` (0.3.0) |
+| `ServiceConsumptionDto` / `ServiceConsumptionLineDto` | Materials a provided service uses up (0.3.0) |
+| `AdvProductionDocDto` / `AdvProductionLineDto` | Complex production / disassembly document (0.3.0) |
+| `WaybillStatus` | Constants of the `waybill_status` codes (0.3.0) |
+| `Loyalty\LoyaltyCustomerDto` | Loyalty (Cloud) card; `loyaltyPrograms` (`LoyaltyCustomerProgramDto[]`), `loyaltyGroups` (`LoyaltyCustomerGroupDto[]`) (0.3.0) |
+| `Loyalty\LoyaltyProgramDto` / `Loyalty\LoyaltyGroupDto` | Loyalty programs and groups (0.3.0) |
+| `Loyalty\LoyaltyBalanceDto` | Card balance (0.3.0) |
+| `Loyalty\LoyaltyBonusHistoryDto` / `Loyalty\LoyaltyBonusProductDto` | Points accumulated / spent and the products behind them (0.3.0) |
 
 **Payload DTOs (Operation):**
 
@@ -662,13 +718,25 @@ foreach ($dto->journals as $row) {
 | `BonusCardPayload` | Yes | Bonus card issuance (v8.0) |
 | `GiftPaymentPayload` | Yes | Gift card payment (v8.0) |
 | `SaveProductionPayload` | Yes | Production with product tree (v8.0) |
+| `AdvProductionPayload` | Yes | Complex production / disassembly (0.3.0) |
+| `CustomerOrderFulfillmentPayload` | Yes | Customer order to sale (0.3.0) |
+| `DiscountOperationPayload` | Yes | Discount card on a sale (0.3.0) |
+| `DiscountCardPayload` | Yes | Discount card issuance, with `person_*` (0.3.0) |
+| `ContragentPayload` | Yes | Customer / vendor save, with `marketing_promotions` (0.3.0) |
+| `ProductPayload` | Yes | Catalog product save (0.3.0) |
+| `Loyalty\LoyaltyCustomerPayload` | Yes | Loyalty (Cloud) card (0.3.0) |
+| `Loyalty\LoyaltyGroupPayload` | Yes | Loyalty group (0.3.0) |
+| `Loyalty\LoyaltyBonusPointPayload` | Yes | Points given / taken (0.3.0) |
 
 **Line item DTOs:**
 
 | DTO | Used in |
 |---|---|
 | `ProductLine` | Product out, in, move, cancel, return |
-| `ServiceLine` | Provided/received service |
+| `ServiceLine` | Provided/received service; `consumedMaterials` (`ConsumedMaterialLine[]`) on provided services (0.3.0) |
+| `ProductPriceLine` | `ProductPayload` prices, with `currency`, `discount_*` (0.3.0) |
+| `AdvProductionLine` | `AdvProductionPayload` materials and products (0.3.0) |
+| `Loyalty\LoyaltyCustomerProgramLine` / `Loyalty\LoyaltyCustomerGroupLine` | `LoyaltyCustomerPayload` programs and groups (0.3.0) |
 | `CafeOrderProductLine` | Cafe order |
 | `CustomerOrderProduct` | Customer order |
 | `AddField` | Additional custom fields |
@@ -726,7 +794,7 @@ If the retry also fails, a `FinaHttpException` is thrown.
 
 ### Retries and writes
 
-`retry_times` / `retry_sleep_ms` apply to reads and query POSTs only. A write (`save*` / `update*`) is sent once: if it times out or gets a 5xx, FINA may already have saved it, and repeating it would create a second document. Look the document up in the matching journal before sending it again. `FinaClient::isWrite($method, $url)` tells the two apart.
+`retry_times` / `retry_sleep_ms` apply to reads and query POSTs only. A write (`save*` / `update*` / `fulfillment*`) is sent once: if it times out or gets a 5xx, FINA may already have saved it, and repeating it would create a second document. Look the document up in the matching journal before sending it again. `FinaClient::isWrite($method, $url)` tells the two apart.
 
 ---
 
@@ -765,13 +833,23 @@ composer ci
 | `ServiceProviderTest` | 4 | | Singleton, alias, config, accessors |
 | `FinaClientHttpTest` | 5 | | Token cache, reuse, 401 refresh, HTTP errors |
 | `ReportingUrlTest` | 3 | | Date format, URL structure |
-| `ReportingChunkingTest` | 4 | | Chunk merge, deduplication, typed output |
-| `DtoValidationTest` | 5 | | Valid/invalid payloads, nested validation |
+| `ReportingChunkingTest` | 7 | | Chunk merge, deduplication, typed output |
+| `DtoValidationTest` | 6 | | Valid/invalid payloads, nested validation |
 | `DtoMappingTest` | 14 | | DTO mapping, empty data, roundtrip |
-| `NewEndpointsTest` | 16 | | All v8.0 endpoints (HTTP mocked) |
-| `NewDtoMappingTest` | 12 | | All v8.0 DTO mapping + edge cases |
+| `NewEndpointsTest` | 19 | | All v8.0 endpoints (HTTP mocked) |
+| `NewDtoMappingTest` | 13 | | All v8.0 DTO mapping + edge cases |
 | `NewDtoValidationTest` | 8 | | v8.0 payload validation (valid + invalid) |
-| **Total** | **75** | **207** | |
+| `PdfOperationEndpointsTest` | 63 | | 8.0 operation endpoints: verb, path, body, `ex` |
+| `PdfJournalFixturesTest` | 16 | | Every journal and report fed with the 8.0 examples |
+| `TypedDocumentsTest` | 7 | | Typed getDoc* DTOs from the 8.0 examples |
+| `RestAndRetailDocTest` | 9 | | Product rest and retail documents |
+| `WriteSafetyTest` | 18 | | Writes never repeated by the transport (incl. 10.0 writes), refusals before sending |
+| `PdfParityTest` | 3 | | Every method of the 10.0 table of contents is referenced in `src/` |
+| `Pdf10EndpointsTest` | 51 | | The 16 new 10.0 methods against the document's examples; every field a new DTO's answer lacks is `null` |
+| `Pdf10ResponseFieldsTest` | 13 | | 10.0 response fields on existing DTOs; absent fields stay `null` |
+| `Pdf10PayloadsTest` | 37 | | 10.0 payloads and request fields; existing payloads byte-identical to 0.2.5 |
+| `TokenLifetimeAndTenantTest` | 47 | | `valid_to` (UTC) cache lifetime in three app zones, `tenant_key` header, validation and cache isolation |
+| **Total** | **343** | **1550** | |
 
 ### Live integration suite (read-only)
 
@@ -782,7 +860,7 @@ FINA_LIVE_BASE_URL=http://host:5007 FINA_LIVE_LOGIN=... FINA_LIVE_PASSWORD=... \
   vendor/bin/phpunit --testsuite Integration --display-incomplete
 ```
 
-It only reads (GET and query-style POST endpoints); a request middleware aborts the run if any URL contains `/save` or `/update`. For every endpoint it checks that all keys documented in the 8.0 PDF are present in the live response and prints which endpoints your FINA build answers with 404.
+It only reads (GET and query-style POST endpoints); a request middleware aborts the run if any URL contains `/save`, `/update` or `/fulfillment`, in any letter case. For every endpoint it checks that all keys documented in the 8.0 PDF are present in the live response and prints which endpoints your FINA build answers with 404; keys the server sends beyond those (such as the 10.0 fields) are listed too.
 
 ### CI
 

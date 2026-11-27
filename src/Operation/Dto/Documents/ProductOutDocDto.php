@@ -12,6 +12,8 @@ namespace Fina\Sdk\Laravel\Operation\Dto\Documents;
  * `check_status` is FINA's "შემოწმების სტატუსი" flag (added in 7.0.20230210).
  * `pay_type`: 0 cash, 1 non-cash, 2 consignment, 3 credit, 4 cash/non-cash,
  * 5 free of charge, 6 other. `w_type`: 2 with transport, 3 without.
+ * `waybill_status` (10.0.20261106) holds a {@see WaybillStatus} code; null when the
+ * FINA build does not send it.
  */
 final readonly class ProductOutDocDto
 {
@@ -60,6 +62,7 @@ final readonly class ProductOutDocDto
         public array $products,
         public array $services,
         public array $raw = [],
+        public ?int $waybillStatus = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -70,6 +73,7 @@ final readonly class ProductOutDocDto
             numPfx: (string) ($data['num_pfx'] ?? ''),
             num: (int) ($data['num'] ?? 0),
             waybillNum: isset($data['waybill_num']) ? (string) $data['waybill_num'] : null,
+            waybillStatus: isset($data['waybill_status']) ? (int) $data['waybill_status'] : null,
             purpose: (string) ($data['purpose'] ?? ''),
             amount: (float) ($data['amount'] ?? 0.0),
             currency: (string) ($data['currency'] ?? ''),

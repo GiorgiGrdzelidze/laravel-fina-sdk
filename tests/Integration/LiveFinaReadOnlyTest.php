@@ -21,8 +21,8 @@ use RuntimeException;
  *   FINA_LIVE_BASE_URL=... FINA_LIVE_LOGIN=... FINA_LIVE_PASSWORD=... \
  *     vendor/bin/phpunit --testsuite Integration
  *
- * Every outgoing request is inspected: a URL containing /save or /update
- * aborts the test run. Nothing here may ever write into FINA.
+ * Every outgoing request is inspected: a URL containing /save, /update or
+ * /fulfillment, in any letter case, aborts the test run. Nothing here may ever write into FINA.
  *
  * For each endpoint the documented (PDF 8.0) keys must all be present in the
  * real response, so a DTO can never silently map a renamed field to 0/''.
@@ -86,7 +86,7 @@ final class LiveFinaReadOnlyTest extends TestCase
 
         Http::globalRequestMiddleware(static function ($request) {
             $uri = (string) $request->getUri();
-            if (preg_match('#/(save|update)[A-Za-z]*#', $uri)) {
+            if (preg_match('#/(save|update|fulfillment)[A-Za-z]*#i', $uri)) {
                 throw new RuntimeException('Refusing to send a write request to FINA: '.$uri);
             }
 
@@ -745,5 +745,15 @@ final class LiveFinaReadOnlyTest extends TestCase
 
         // Never reaches FINA: the middleware throws before the request is sent.
         $this->fina()->documents()->saveProductOut(['id' => 0]);
+    }
+
+    public function test_write_guard_blocks_order_fulfillment(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Refusing to send a write request');
+
+        // Never reaches FINA: the middleware throws before the request is sent. Should the
+        // guard ever fail, an id beyond FINA's int range is refused instead of turned into a sale.
+        $this->fina()->documents()->fulfillCustomerOrder(PHP_INT_MAX);
     }
 }

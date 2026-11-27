@@ -102,6 +102,8 @@ final class ProductMovePayload implements ValidatesPayload
             'products.*.id' => ['required', 'integer', 'min:1'],
             'products.*.quantity' => ['required', 'numeric', 'gt:0'],
             'products.*.sub_id' => ['nullable', 'integer', 'min:0'],
+            // 10.0: retail price, used only when the move is made at sale prices
+            'products.*.price' => ['nullable', 'numeric', 'gte:0'],
         ];
     }
 
@@ -117,6 +119,7 @@ final class ProductMovePayload implements ValidatesPayload
             'store_to' => 'store to',
             'products.*.id' => 'product id',
             'products.*.quantity' => 'product quantity',
+            'products.*.price' => 'product price',
         ];
     }
 }

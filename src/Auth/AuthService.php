@@ -61,7 +61,7 @@ final readonly class AuthService
             throw new FinaRemoteException($data, 'FINA authenticate did not return token');
         }
 
-        $this->client->tokenStore()->put($dto->token);
+        $this->client->tokenStore()->put($dto->token, $dto->expiresAt());
 
         return $dto->token;
     }

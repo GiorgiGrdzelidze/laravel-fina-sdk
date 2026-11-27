@@ -69,7 +69,7 @@ final class FinaClient
     /**
      * @param  array<string, mixed>  $config  Merged FINA SDK configuration (from config/fina.php).
      *
-     * @throws FinaConfigException If required config values are missing.
+     * @throws FinaConfigException If required config values are missing, or the tenant key holds a control character.
      */
     public function __construct(array $config)
     {
@@ -86,8 +86,16 @@ final class FinaClient
             throw new FinaConfigException('FINA credentials are missing. Set FINA_LOGIN and FINA_PASSWORD.');
         }
 
+        // it goes out as a header; the message never repeats it
+        if (preg_match('/[\x00-\x1F\x7F]/', (string) ($this->config['tenant_key'] ?? '')) === 1) {
+            throw new FinaConfigException('FINA tenant_key contains a control character. Check FINA_TENANT_KEY.');
+        }
+
+        // a tenant gets its own token; without one the key is what it always was
+        $tenantKey = $this->tenantKey();
+
         $cacheKey = ($this->config['token_cache_key_prefix'] ?? 'fina:sdk:token:')
-            .sha1($baseUrl.'|'.$login);
+            .sha1($baseUrl.'|'.$login.($tenantKey !== null ? '|'.$tenantKey : ''));
 
         $ttl = (int) ($this->config['token_cache_ttl_seconds'] ?? (35 * 3600));
 
@@ -117,6 +125,16 @@ final class FinaClient
     public function password(): string
     {
         return (string) $this->config['password'];
+    }
+
+    /**
+     * Get the MultiTenant key sent as the `tenant_key` header, or null when none is configured.
+     */
+    public function tenantKey(): ?string
+    {
+        $key = trim((string) ($this->config['tenant_key'] ?? ''));
+
+        return $key !== '' ? $key : null;
     }
 
     /**
@@ -161,6 +179,11 @@ final class FinaClient
 
         if ($token) {
             $req = $req->withToken($token);
+        }
+
+        $tenantKey = $this->tenantKey();
+        if ($tenantKey !== null) {
+            $req = $req->withHeaders(['tenant_key' => $tenantKey]);
         }
 
         return $req;
@@ -222,14 +245,15 @@ final class FinaClient
     }
 
     /**
-     * Whether a request writes to FINA (save* / update*). A write is never repeated by the
+     * Whether a request writes to FINA (save* / update* / fulfillment*). A write is never repeated by the
      * transport: a timeout or a 5xx after FINA saved the document would create it twice.
      */
     public static function isWrite(string $method, string $url): bool
     {
         $last = strtolower((string) basename((string) parse_url($url, PHP_URL_PATH)));
 
-        return strtolower($method) !== 'get' && (str_starts_with($last, 'save') || str_starts_with($last, 'update'));
+        return strtolower($method) !== 'get'
+            && (str_starts_with($last, 'save') || str_starts_with($last, 'update') || str_starts_with($last, 'fulfillment'));
     }
 
     private function send(string $method, string $url, string $token, array $data = []): Response

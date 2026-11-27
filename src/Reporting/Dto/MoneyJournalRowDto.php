@@ -8,6 +8,10 @@ declare(strict_types=1);
 
 namespace Fina\Sdk\Laravel\Reporting\Dto;
 
+/**
+ * `ref_id` (getCustomersMoneyJournal, 10.0.20261027) is the FINA operation the money was
+ * received or returned for, 0 when none; null when not sent (getVendorsMoneyJournal never sends it).
+ */
 final class MoneyJournalRowDto
 {
     public function __construct(
@@ -24,6 +28,7 @@ final class MoneyJournalRowDto
         public readonly ?int $vendorId,
         public readonly int $payType,
         public readonly int $payTypeId,
+        public readonly ?int $refId = null,
     ) {}
 
     public static function fromArray(array $row): self
@@ -42,6 +47,7 @@ final class MoneyJournalRowDto
             vendorId: isset($row['vendor_id']) ? (int) $row['vendor_id'] : null,
             payType: (int) ($row['pay_type'] ?? 0),
             payTypeId: (int) ($row['pay_type_id'] ?? 0),
+            refId: isset($row['ref_id']) ? (int) $row['ref_id'] : null,
         );
     }
 
@@ -61,6 +67,7 @@ final class MoneyJournalRowDto
             'vendor_id' => $this->vendorId,
             'pay_type' => $this->payType,
             'pay_type_id' => $this->payTypeId,
+            'ref_id' => $this->refId,
         ];
     }
 }

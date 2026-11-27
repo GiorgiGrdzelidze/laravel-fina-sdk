@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Fina\Sdk\Laravel\Auth;
 
+use DateTimeInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -15,6 +17,12 @@ use Illuminate\Support\Facades\Cache;
  */
 final class TokenStore
 {
+    /** A token is dropped this long before FINA's `valid_to`. */
+    private const EXPIRY_MARGIN_SECONDS = 3600;
+
+    /** How long a token is kept when its `valid_to` is already past or closer than the margin. */
+    private const SHORT_TTL_SECONDS = 60;
+
     /**
      * @param  string  $cacheKey  Unique cache key (includes base URL + login hash).
      * @param  int  $ttlSeconds  Time-to-live for the cached token in seconds.
@@ -40,10 +48,27 @@ final class TokenStore
      * Store an authentication token in the cache.
      *
      * @param  string  $token  The bearer token to cache.
+     * @param  DateTimeInterface|null  $expiresAt  FINA's `valid_to`; it can shorten the lifetime, never extend it.
      */
-    public function put(string $token): void
+    public function put(string $token, ?DateTimeInterface $expiresAt = null): void
     {
-        Cache::put($this->cacheKey, $token, $this->ttlSeconds);
+        Cache::put($this->cacheKey, $token, $this->ttlFor($expiresAt));
+    }
+
+    /**
+     * Seconds a token is kept: until an hour before `$expiresAt`, at most the configured TTL.
+     * When `$expiresAt` is already past or less than an hour away, 60 seconds (at most the configured
+     * TTL), so the first call after that minute logs in again. Without `$expiresAt`, the configured TTL.
+     */
+    public function ttlFor(?DateTimeInterface $expiresAt): int
+    {
+        if ($expiresAt === null) {
+            return $this->ttlSeconds;
+        }
+
+        $left = $expiresAt->getTimestamp() - Carbon::now()->getTimestamp() - self::EXPIRY_MARGIN_SECONDS;
+
+        return min($left > 0 ? $left : self::SHORT_TTL_SECONDS, $this->ttlSeconds);
     }
 
     /**

@@ -12,6 +12,12 @@ use Fina\Sdk\Laravel\Exceptions\FinaValidationException;
 use Fina\Sdk\Laravel\Operation\Dto\CustomerMoneyInPayload;
 use Fina\Sdk\Laravel\Operation\Dto\CustomerMoneyReturnPayload;
 use Fina\Sdk\Laravel\Operation\Dto\CustomerReturnPayload;
+use Fina\Sdk\Laravel\Operation\Dto\DiscountOperationPayload;
+use Fina\Sdk\Laravel\Operation\Dto\Loyalty\LoyaltyBonusPointPayload;
+use Fina\Sdk\Laravel\Operation\Dto\Loyalty\LoyaltyCustomerPayload;
+use Fina\Sdk\Laravel\Operation\Dto\Loyalty\LoyaltyGroupPayload;
+use Fina\Sdk\Laravel\Operation\Dto\Production\AdvProductionLine;
+use Fina\Sdk\Laravel\Operation\Dto\Production\AdvProductionPayload;
 use Fina\Sdk\Laravel\Operation\Dto\ProductLine;
 use Fina\Sdk\Laravel\Operation\Dto\ProductOutPayload;
 use Fina\Sdk\Laravel\Support\PayloadValidator;
@@ -19,10 +25,11 @@ use Fina\Sdk\Laravel\Tests\TestCase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * Writes reach FINA at most once per call: the transport never repeats a save*
- * or update*, because a timeout or 5xx after FINA saved would create it twice.
+ * Writes reach FINA at most once per call: the transport never repeats a save*,
+ * update* or fulfillment*, because a timeout or 5xx after FINA saved would create it twice.
  */
 final class WriteSafetyTest extends TestCase
 {
@@ -202,5 +209,84 @@ final class WriteSafetyTest extends TestCase
             }
         }
         $this->assertSame(2, $this->sent('/saveDocProductOut'), 'each save went out once');
+    }
+
+    // -------------------------------------------------------
+    // 10.0 writes
+    // -------------------------------------------------------
+
+    public function test_10_0_writes_are_detected(): void
+    {
+        foreach (['saveLoyaltyCustomer', 'saveLoyaltyGroup', 'saveLoyaltyBonusPoint', 'saveDocAdvProduction', 'saveDocDiscountOperation', 'fulfillmentCustomerOrder'] as $endpoint) {
+            $this->assertTrue(FinaClient::isWrite('post', "/api/operation/{$endpoint}"), $endpoint);
+        }
+        $this->assertTrue(FinaClient::isWrite('POST', 'http://x/api/operation/FulfillmentCustomerOrder'));
+
+        foreach (['getLoyaltyCustomers', 'getLoyaltyCustomer/44', 'getLoyaltyCustomerBalance/777888', 'getLoyaltyBonusHistory/777888', 'getDocAdvProduction/36095', 'getServiceConsumptionMaterials', 'getStoreAdditionalFields'] as $read) {
+            $this->assertFalse(FinaClient::isWrite('get', "/api/operation/{$read}"), $read);
+        }
+    }
+
+    /** @return iterable<string, array{callable(FinaClient): mixed, string}> */
+    public static function writes10(): iterable
+    {
+        yield 'saveLoyaltyCustomer' => [fn (FinaClient $c) => $c->loyalty()->saveCustomer(new LoyaltyCustomerPayload(0, 'n')), 'saveLoyaltyCustomer'];
+        yield 'saveLoyaltyGroup' => [fn (FinaClient $c) => $c->loyalty()->saveGroup(new LoyaltyGroupPayload(0, 'g')), 'saveLoyaltyGroup'];
+        yield 'saveLoyaltyBonusPoint' => [fn (FinaClient $c) => $c->loyalty()->saveBonusPoint(new LoyaltyBonusPointPayload(45, CarbonImmutable::parse('2026-07-10 15:45:31'), 9.0, -1)), 'saveLoyaltyBonusPoint'];
+        yield 'saveDocAdvProduction' => [fn (FinaClient $c) => $c->documents()->saveAdvProduction(new AdvProductionPayload(
+            0, CarbonImmutable::parse('2026-06-25 14:17:45'), '', 0, 'x', 1, 2.0, 1, true, [new AdvProductionLine(4, 3.0)], [new AdvProductionLine(106, 1.0, 100.0)],
+        )), 'saveDocAdvProduction'];
+        yield 'saveDocDiscountOperation' => [fn (FinaClient $c) => $c->loyalty()->saveDiscountOperation(new DiscountOperationPayload(2013, 16975)), 'saveDocDiscountOperation'];
+        yield 'fulfillmentCustomerOrder' => [fn (FinaClient $c) => $c->documents()->fulfillCustomerOrder(4164), 'fulfillmentCustomerOrder'];
+    }
+
+    /** @param callable(FinaClient): mixed $call */
+    #[DataProvider('writes10')]
+    public function test_a_10_0_write_that_gets_a_server_error_is_sent_once(callable $call, string $endpoint): void
+    {
+        Http::fake([
+            '*/api/authentication/*' => Http::response(['token' => 'tok', 'ex' => null]),
+            "*/api/operation/{$endpoint}" => Http::sequence()->push('bad gateway', 502)->push(['id' => 1, 'res' => true, 'ex' => null]),
+        ]);
+
+        try {
+            $call($this->client());
+            $this->fail('a 502 must surface, not be retried into a second write');
+        } catch (FinaHttpException $e) {
+            $this->assertSame(502, $e->status);
+        }
+        $this->assertSame(1, $this->sent("/{$endpoint}"));
+    }
+
+    public function test_an_order_fulfillment_that_times_out_is_sent_once(): void
+    {
+        $attempts = 0;
+        Http::fake([
+            '*/api/authentication/*' => Http::response(['token' => 'tok', 'ex' => null]),
+            '*/api/operation/fulfillmentCustomerOrder' => function () use (&$attempts) {
+                $attempts++;
+                throw new ConnectionException('cURL error 28: timed out');
+            },
+        ]);
+
+        $this->expectException(ConnectionException::class);
+        try {
+            $this->client()->documents()->fulfillCustomerOrder(4164);
+        } finally {
+            $this->assertSame(1, $attempts, 'a second call would turn the order into a second sale');
+        }
+    }
+
+    public function test_an_expired_token_on_order_fulfillment_is_refreshed_and_sent_once_more(): void
+    {
+        Http::fake([
+            '*/api/authentication/*' => Http::sequence()->push(['token' => 'old', 'ex' => null])->push(['token' => 'new', 'ex' => null]),
+            '*/api/operation/fulfillmentCustomerOrder' => Http::sequence()->push('expired', 401)->push(['id' => 3647, 'ex' => null]),
+        ]);
+
+        $sale = $this->client()->documents()->fulfillCustomerOrder(4164);
+
+        $this->assertSame(3647, $sale->id);
+        $this->assertSame(2, $this->sent('/fulfillmentCustomerOrder'), '401 means FINA never processed it: one resend with a fresh token');
     }
 }

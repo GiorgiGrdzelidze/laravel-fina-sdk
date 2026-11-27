@@ -19,6 +19,15 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | Tenant (MultiTenant FINA)
+     |--------------------------------------------------------------------------
+     | Sent as the `tenant_key` header on every request, authenticate included.
+     | Leave empty for a FINA that is not MultiTenant: the header is not sent.
+     */
+    'tenant_key' => env('FINA_TENANT_KEY'),
+
+    /*
+     |--------------------------------------------------------------------------
      | HTTP settings
      |--------------------------------------------------------------------------
      */
@@ -31,6 +40,10 @@ return [
      | Token cache
      |--------------------------------------------------------------------------
      | Token lifetime is ~36 hours in FINA; we keep a safe default slightly lower.
+     | When authenticate returns `valid_to`, the token is kept until one hour
+     | before it, but never longer than this. `valid_to` comes without a time
+     | zone and is read as UTC (a value with its own offset keeps it); one that
+     | is already past or less than an hour away keeps the token 60 seconds.
      */
     'token_cache_ttl_seconds' => (int) env('FINA_TOKEN_TTL', 35 * 3600),
     'token_cache_key_prefix' => env('FINA_TOKEN_CACHE_PREFIX', 'fina:sdk:token:'),

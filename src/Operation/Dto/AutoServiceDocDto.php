@@ -9,9 +9,12 @@ declare(strict_types=1);
 namespace Fina\Sdk\Laravel\Operation\Dto;
 
 use Fina\Sdk\Laravel\Operation\DocumentsApi;
+use Fina\Sdk\Laravel\Operation\Dto\Documents\WaybillStatus;
 
 /**
  * Represents a full auto-service document with transport, waybill, and product/service details.
+ * `waybill_status` (10.0.20261106) holds a {@see WaybillStatus} code; null when the FINA build
+ * does not send it.
  *
  * @see DocumentsApi::getAutoServiceTyped()
  */
@@ -65,6 +68,7 @@ final readonly class AutoServiceDocDto
         public array $products,
         public array $services,
         public array $subAccounts,
+        public ?int $waybillStatus = null,
     ) {}
 
     /**
@@ -114,6 +118,7 @@ final readonly class AutoServiceDocDto
             (array) ($data['products'] ?? []),
             (array) ($data['services'] ?? []),
             (array) ($data['sub_accounts'] ?? []),
+            isset($data['waybill_status']) ? (int) $data['waybill_status'] : null,
         );
     }
 }

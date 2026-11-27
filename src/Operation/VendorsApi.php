@@ -12,6 +12,7 @@ use Fina\Sdk\Laravel\Client\FinaClient;
 use Fina\Sdk\Laravel\Contracts\ArrayPayload;
 use Fina\Sdk\Laravel\Contracts\ValidatesPayload;
 use Fina\Sdk\Laravel\Endpoints\BaseApi;
+use Fina\Sdk\Laravel\Operation\Dto\ContragentDto;
 use Fina\Sdk\Laravel\Operation\Dto\ContragentSubAccountDto;
 use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
 use Fina\Sdk\Laravel\Support\PayloadValidator;
@@ -42,6 +43,28 @@ final class VendorsApi extends BaseApi
     public function all(): array
     {
         return $this->get('getVendors', [], 'operation.getVendors returned ex');
+    }
+
+    /**
+     * getVendorsByCode (typed)
+     * GET api/operation/getVendorsByCode/{code}
+     *
+     * @return ContragentDto[]
+     */
+    public function getByCodeTyped(string $code): array
+    {
+        return $this->contragents($this->getByCode($code));
+    }
+
+    /**
+     * getVendors (typed)
+     * GET api/operation/getVendors
+     *
+     * @return ContragentDto[]
+     */
+    public function allTyped(): array
+    {
+        return $this->contragents($this->all());
     }
 
     /**
@@ -103,6 +126,17 @@ final class VendorsApi extends BaseApi
 
         return SaveDocResponse::fromArray(
             $this->post('saveVendor', $body, 'operation.saveVendor returned ex')
+        );
+    }
+
+    /**
+     * @return ContragentDto[]
+     */
+    private function contragents(array $data): array
+    {
+        return array_map(
+            static fn ($c) => ContragentDto::fromArray((array) $c),
+            array_values((array) ($data['contragents'] ?? []))
         );
     }
 }

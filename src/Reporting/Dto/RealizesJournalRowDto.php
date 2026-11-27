@@ -13,7 +13,8 @@ namespace Fina\Sdk\Laravel\Reporting\Dto;
  *
  * Covers product sales (doc_type 21), retail sales (23) and fixed-asset sales.
  * `pay_type`: 0 cash, 1 non-cash, 2 consignment, 3 credit, 4 cash/non-cash,
- * 5 free of charge, 6 other.
+ * 5 free of charge, 6 other. `ref_id` (10.0.20261027) is the customer order the
+ * sale was made from, 0 when none; null when the FINA build does not send it.
  */
 final class RealizesJournalRowDto
 {
@@ -32,6 +33,7 @@ final class RealizesJournalRowDto
         public readonly int $storeId,
         public readonly int $payType,
         public readonly array $raw = [],
+        public readonly ?int $refId = null,
     ) {}
 
     public static function fromArray(array $row): self
@@ -50,6 +52,7 @@ final class RealizesJournalRowDto
             customerId: (int) ($row['customer_id'] ?? 0),
             storeId: (int) ($row['store_id'] ?? 0),
             payType: (int) ($row['pay_type'] ?? 0),
+            refId: isset($row['ref_id']) ? (int) $row['ref_id'] : null,
             raw: $row,
         );
     }
@@ -70,6 +73,7 @@ final class RealizesJournalRowDto
             'customer_id' => $this->customerId,
             'store_id' => $this->storeId,
             'pay_type' => $this->payType,
+            'ref_id' => $this->refId,
             'raw' => $this->raw,
         ];
     }

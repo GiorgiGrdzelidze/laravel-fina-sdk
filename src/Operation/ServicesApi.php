@@ -14,6 +14,7 @@ use Fina\Sdk\Laravel\Contracts\ValidatesPayload;
 use Fina\Sdk\Laravel\Endpoints\BaseApi;
 use Fina\Sdk\Laravel\Operation\Dto\AdditionalFieldDescriptorDto;
 use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
+use Fina\Sdk\Laravel\Operation\Dto\ServiceConsumptionDto;
 use Fina\Sdk\Laravel\Support\PayloadValidator;
 
 /**
@@ -34,6 +35,22 @@ final class ServicesApi extends BaseApi
     public function provided(): array
     {
         return $this->get('getProvidedServices', [], 'operation.getProvidedServices returned ex');
+    }
+
+    /**
+     * GET api/operation/getServiceConsumptionMaterials (10.0)
+     * Materials (products) each provided service uses up, per unit of the service.
+     *
+     * @return ServiceConsumptionDto[]
+     */
+    public function consumptionMaterials(): array
+    {
+        $data = $this->get('getServiceConsumptionMaterials', [], 'operation.getServiceConsumptionMaterials returned ex');
+
+        return array_map(
+            static fn ($s) => ServiceConsumptionDto::fromArray((array) $s),
+            array_values((array) ($data['services'] ?? []))
+        );
     }
 
     /**

@@ -45,4 +45,24 @@ final class DocLines
             array_values((array) ($rows ?? []))
         );
     }
+
+    /**
+     * A key the row does not carry stays null.
+     *
+     * @return array<int, array{field: string|null, value: string|null}>
+     */
+    public static function addFieldsAsSent(mixed $rows): array
+    {
+        return array_map(
+            static function ($r): array {
+                $row = (array) $r;
+
+                return [
+                    'field' => isset($row['field']) ? (string) $row['field'] : null,
+                    'value' => isset($row['value']) ? (string) $row['value'] : null,
+                ];
+            },
+            array_values((array) ($rows ?? []))
+        );
+    }
 }

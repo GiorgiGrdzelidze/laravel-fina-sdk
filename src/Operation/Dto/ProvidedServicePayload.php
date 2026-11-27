@@ -98,6 +98,9 @@ final class ProvidedServicePayload implements ValidatesPayload
             'services.*.id' => ['required', 'integer', 'min:1'],
             'services.*.quantity' => ['required', 'numeric', 'gt:0'],
             'services.*.price' => ['required', 'numeric', 'gte:0'],
+            'services.*.consumed_materials' => ['nullable', 'array'],
+            'services.*.consumed_materials.*.id' => ['required', 'integer', 'min:1'],
+            'services.*.consumed_materials.*.quantity' => ['required', 'numeric', 'gt:0'],
         ];
     }
 
@@ -112,6 +115,8 @@ final class ProvidedServicePayload implements ValidatesPayload
             'services.*.id' => 'service id',
             'services.*.quantity' => 'service quantity',
             'services.*.price' => 'service price',
+            'services.*.consumed_materials.*.id' => 'consumed material id',
+            'services.*.consumed_materials.*.quantity' => 'consumed material quantity',
         ];
     }
 }

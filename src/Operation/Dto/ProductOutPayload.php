@@ -65,6 +65,9 @@ final class ProductOutPayload implements ValidatesPayload
 
         // price type id the document is priced by (FINA default 3 = retail)
         public readonly int $priceType = 3,
+
+        // 10.0: gift overlap, 0 no / 1 yes; FINA applies it to pay_type 5 (free of charge) only
+        public readonly ?int $giftOverlap = null,
     ) {}
 
     public function toArray(): array
@@ -105,6 +108,7 @@ final class ProductOutPayload implements ValidatesPayload
 
             'overlap_type' => $this->overlapType,
             'overlap_amount' => $this->overlapAmount,
+            'gift_overlap' => $this->giftOverlap,
 
             'add_fields' => array_map(fn (AddField $f) => $f->toArray(), $this->addFields),
             'products' => array_map(fn (ProductLine $p) => $p->toArray(), $this->products),
@@ -128,9 +132,13 @@ final class ProductOutPayload implements ValidatesPayload
             'w_type' => ['required', 'integer', 'in:2,3'],
             't_type' => ['required', 'integer', 'in:1,2,3,4,6,7'],
             't_payer' => ['required', 'integer', 'in:1,2'],
+            // the 10.0 document: gift_overlap acts only on pay_type 5 (free of charge); its own example sends 0 with pay_type 1
+            'gift_overlap' => ['nullable', 'integer', $this->payType === 5 ? 'in:0,1' : 'in:0'],
             'products' => ['required', 'array', 'min:1'],
             'products.*.id' => ['required', 'integer', 'min:1'],
             'products.*.quantity' => ['required', 'numeric', 'gt:0'],
+            // documented for saveDocProvidedService only; `missing` refuses an empty list too
+            'services.*.consumed_materials' => ['missing'],
         ];
     }
 

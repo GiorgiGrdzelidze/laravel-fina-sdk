@@ -10,7 +10,8 @@ namespace Fina\Sdk\Laravel\Operation\Dto\Documents;
 
 /**
  * Each product line carries `out_id`, the id of the sale it reverses
- * (0 when the return is not tied to one sale).
+ * (0 when the return is not tied to one sale). `waybill_status` (10.0.20261106)
+ * holds a {@see WaybillStatus} code; null when the FINA build does not send it.
  */
 final readonly class CustomerReturnDocDto
 {
@@ -47,6 +48,7 @@ final readonly class CustomerReturnDocDto
         public string $trText,
         public array $products,
         public array $raw = [],
+        public ?int $waybillStatus = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -57,6 +59,7 @@ final readonly class CustomerReturnDocDto
             numPfx: (string) ($data['num_pfx'] ?? ''),
             num: (int) ($data['num'] ?? 0),
             waybillNum: isset($data['waybill_num']) ? (string) $data['waybill_num'] : null,
+            waybillStatus: isset($data['waybill_status']) ? (int) $data['waybill_status'] : null,
             purpose: (string) ($data['purpose'] ?? ''),
             amount: (float) ($data['amount'] ?? 0.0),
             currency: (string) ($data['currency'] ?? ''),

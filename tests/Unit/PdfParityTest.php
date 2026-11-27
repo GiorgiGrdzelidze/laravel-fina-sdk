@@ -9,41 +9,41 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
 /**
- * Every method listed in the "FINA WEB API 8.0" table of contents
- * (version 8.0.20260303) must be referenced by name somewhere in src/.
+ * Every method listed in the "FINA WEB API 10.0" table of contents
+ * (version 10.0.20261106) must be referenced by name somewhere in src/.
  */
 final class PdfParityTest extends TestCase
 {
     /** @var string[] */
     private const PDF_METHODS = [
-        'authenticate',
-        'getCustomersByCode', 'getVendorsByCode', 'getCustomers', 'getVendors',
-        'getCustomerAdditionalFields', 'getVendorAdditionalFields', 'getCustomerGroups', 'getVendorGroups',
-        'getCustomerAddresses', 'getVendorAddresses', 'getCustomerAgreements', 'getContragentSubAccountFields',
-        'getCustomerSubAccounts', 'getVendorSubAccounts',
+        'authenticate', 'getCustomersByCode', 'getVendorsByCode', 'getCustomers', 'getVendors', 'getCustomerAdditionalFields',
+        'getVendorAdditionalFields', 'getCustomerGroups', 'getVendorGroups', 'getCustomerAddresses', 'getVendorAddresses',
+        'getCustomerAgreements', 'getContragentSubAccountFields', 'getCustomerSubAccounts', 'getVendorSubAccounts',
         'getProductGroups', 'getWebProductGroups', 'getProvidedServiceGroups', 'getReceivedServiceGroups', 'getInventoryGroups',
-        'getProducts', 'getProductsArray', 'getProductsAfter', 'getProvidedServices', 'getReceivedServices', 'getInventories',
-        'getProductAdditionalFields', 'getProvidedServiceAdditionalFields', 'getInventoryAdditionalFields',
-        'getCharacteristics', 'getCharacteristicValues', 'getCharacteristicValuesArray', 'getPackedProducts',
-        'getSubCodeTypes', 'getProductSubCodes', 'getProductPlaces', 'getProductImages', 'getProductsImageArray',
-        'getProductsBarcodeArray', 'getProductsOnWay', 'getProductPrices', 'getProvidedServicePrices', 'getProductUnits',
-        'getProductPricesAdvance', 'getProductPricesAfter',
-        'getProductsRest', 'getProductsRestAfter', 'getProductsRestArray', 'getProductsRestByStore', 'getProductsRestSummary',
-        'getProductsRestByStoreAfter', 'getProductsRestAdvance', 'getSubProductsRest',
-        'getInventoriesRest', 'getInventoriesRestArray', 'getInventoriesRestByStore', 'getInventoriesRestAdvance',
-        'getProductsSelfCost', 'getPriceTypes', 'getDiscountTypes', 'getUnits', 'getStoreGroups', 'getStores', 'getProjects',
-        'getTerminals', 'getCashes', 'getUsers', 'getUserPermissions', 'getBankAccounts', 'getCreditBanks', 'getStaffGroups',
-        'getStaffs', 'getTransportationMeans', 'getStaffAdditionalFields', 'getGiftCards', 'getGiftCardInfoByCode',
-        'getBonusCoeff', 'getLoyaltyCardsByHolder', 'getBonusCardRestByCode', 'getAccountValue', 'getAccountValueDetails',
-        'saveCustomer', 'saveVendor', 'saveStaff', 'saveProduct', 'saveProvidedService',
-        'getDocTypes', 'getDocAdditionalFields', 'getDocDiscountCard', 'getDocCustomerOrder', 'getDocProductOut',
-        'getDocProductOutSingle', 'getDocInventoryOut', 'getDocProductMove', 'getDocInventoryMove',
-        'getDocCustomerInventoryReturn', 'getDocProvidedService', 'getDocReceivedService', 'getDocCustomerReturn',
-        'getDocProduction', 'getDocAutoService', 'updateRsStatus',
-        'saveDocDiscountCard', 'saveDocBonusCard', 'saveDocGiftCard', 'saveDocBonusOperation', 'saveDocCustomerOrder',
-        'saveDocProductOut', 'saveDocProductMove', 'saveDocProvidedService', 'saveDocReceivedService',
-        'saveDocCustomerReturn', 'saveDocProductIn', 'saveDocProductCancel', 'saveDocCafeOrder', 'saveDocCustomerMoneyIn',
-        'saveDocCustomerAdvanceIn', 'saveDocCustomerMoneyReturn', 'saveDocBonusPayment', 'saveDocGiftPayment', 'saveDocProduction',
+        'getProducts', 'getProductsArray', 'getProductsAfter', 'getProvidedServices', 'getServiceConsumptionMaterials',
+        'getReceivedServices', 'getInventories', 'getProductAdditionalFields', 'getProvidedServiceAdditionalFields',
+        'getInventoryAdditionalFields', 'getCharacteristics', 'getCharacteristicValues', 'getCharacteristicValuesArray',
+        'getPackedProducts', 'getSubCodeTypes', 'getProductSubCodes', 'getProductPlaces', 'getProductImages',
+        'getProductsImageArray', 'getProductsBarcodeArray', 'getProductsOnWay', 'getProductPrices', 'getProvidedServicePrices',
+        'getProductUnits', 'getProductPricesAdvance', 'getProductPricesAfter', 'getProductsRest', 'getProductsRestAfter',
+        'getProductsRestArray', 'getProductsRestByStore', 'getProductsRestSummary', 'getProductsRestByStoreAfter',
+        'getProductsRestAdvance', 'getSubProductsRest', 'getInventoriesRest', 'getInventoriesRestArray',
+        'getInventoriesRestByStore', 'getInventoriesRestAdvance', 'getProductsSelfCost', 'getPriceTypes', 'getDiscountTypes',
+        'getUnits', 'getStoreGroups', 'getStores', 'getStoreAdditionalFields', 'getProjects', 'getTerminals', 'getCashes',
+        'getUsers', 'getUserPermissions', 'getBankAccounts', 'getCreditBanks', 'getStaffGroups', 'getStaffs',
+        'getTransportationMeans', 'getStaffAdditionalFields', 'getGiftCards', 'getGiftCardInfoByCode', 'getBonusCoeff',
+        'getLoyaltyCardsByHolder', 'getBonusCardRestByCode', 'getAccountValue', 'getAccountValueDetails', 'getLoyaltyCustomers',
+        'getLoyaltyCustomer', 'getLoyaltyCustomerPrograms', 'getLoyaltyCustomerGroups', 'getLoyaltyCustomerBalances',
+        'getLoyaltyCustomerBalance', 'getLoyaltyBonusHistory', 'saveCustomer', 'saveVendor', 'saveStaff', 'saveProduct',
+        'saveProvidedService', 'saveLoyaltyCustomer', 'saveLoyaltyGroup', 'saveLoyaltyBonusPoint', 'getDocTypes',
+        'getDocAdditionalFields', 'getDocDiscountCard', 'getDocCustomerOrder', 'getDocProductOut', 'getDocProductOutSingle',
+        'getDocInventoryOut', 'getDocProductMove', 'getDocInventoryMove', 'getDocCustomerInventoryReturn',
+        'getDocProvidedService', 'getDocReceivedService', 'getDocCustomerReturn', 'getDocProduction', 'getDocAutoService',
+        'getDocAdvProduction', 'updateRsStatus', 'fulfillmentCustomerOrder', 'saveDocDiscountCard', 'saveDocBonusCard',
+        'saveDocGiftCard', 'saveDocBonusOperation', 'saveDocDiscountOperation', 'saveDocCustomerOrder', 'saveDocProductOut',
+        'saveDocProductMove', 'saveDocProvidedService', 'saveDocReceivedService', 'saveDocCustomerReturn', 'saveDocProductIn',
+        'saveDocProductCancel', 'saveDocCafeOrder', 'saveDocCustomerMoneyIn', 'saveDocCustomerAdvanceIn',
+        'saveDocCustomerMoneyReturn', 'saveDocBonusPayment', 'saveDocGiftPayment', 'saveDocProduction', 'saveDocAdvProduction',
         'getRealizesJournal', 'getMovesJournal', 'getDocProvidedServicesJournal', 'getDocReceivedServicesJournal',
         'getCustomersOrderJournal', 'getCustomersReturnJournal', 'getCustomersMoneyJournal', 'getVendorsMoneyJournal',
         'getProductionsJournal', 'getEntriesJournal', 'getDiscountCardsJournal', 'getAutoServicesOutJournal',
@@ -51,9 +51,9 @@ final class PdfParityTest extends TestCase
         'getCafeOrderDetailedReport',
     ];
 
-    public function test_the_pdf_lists_138_methods(): void
+    public function test_the_pdf_lists_154_methods(): void
     {
-        $this->assertCount(138, array_unique(self::PDF_METHODS));
+        $this->assertCount(154, array_unique(self::PDF_METHODS));
     }
 
     public function test_every_pdf_method_is_referenced_in_src(): void
@@ -74,7 +74,7 @@ final class PdfParityTest extends TestCase
 
     public function test_methods_outside_the_pdf_are_the_known_undocumented_money_endpoints(): void
     {
-        preg_match_all('/[\'"\/]((?:get|save|update)[A-Z][A-Za-z]+)[\'"\/]/', $this->sourceText(), $m);
+        preg_match_all('/[\'"\/]((?:get|save|update|fulfillment)[A-Z][A-Za-z]+)[\'"\/]/', $this->sourceText(), $m);
         $referenced = array_unique($m[1]);
 
         $unknown = array_values(array_diff($referenced, self::PDF_METHODS));
@@ -83,7 +83,7 @@ final class PdfParityTest extends TestCase
         $this->assertSame(
             ['saveDocCustomerMoneyOut', 'saveDocVendorMoneyIn', 'saveDocVendorMoneyOut', 'saveDocVendorMoneyReturn'],
             $unknown,
-            'endpoints the SDK references that the 8.0 PDF does not document'
+            'endpoints the SDK references that the 10.0 PDF does not document'
         );
     }
 

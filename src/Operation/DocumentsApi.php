@@ -13,11 +13,13 @@ use Fina\Sdk\Laravel\Contracts\ArrayPayload;
 use Fina\Sdk\Laravel\Contracts\ValidatesPayload;
 use Fina\Sdk\Laravel\Endpoints\BaseApi;
 use Fina\Sdk\Laravel\Operation\Dto\AutoServiceDocDto;
+use Fina\Sdk\Laravel\Operation\Dto\CustomerOrderFulfillmentPayload;
 use Fina\Sdk\Laravel\Operation\Dto\Documents\CustomerOrderDocDto;
 use Fina\Sdk\Laravel\Operation\Dto\Documents\CustomerReturnDocDto;
 use Fina\Sdk\Laravel\Operation\Dto\Documents\ProductMoveDocDto;
 use Fina\Sdk\Laravel\Operation\Dto\Documents\ProductOutDocDto;
 use Fina\Sdk\Laravel\Operation\Dto\Documents\ProductOutSingleDocDto;
+use Fina\Sdk\Laravel\Operation\Dto\Production\AdvProductionDocDto;
 use Fina\Sdk\Laravel\Operation\Dto\Production\ProductionDocDto;
 use Fina\Sdk\Laravel\Operation\Dto\RsStatusResponse;
 use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
@@ -177,6 +179,41 @@ final class DocumentsApi extends BaseApi
         $data = $this->getDoc('getDocProduction', $id);
 
         return ProductionDocDto::fromArray((array) ($data['production'] ?? []));
+    }
+
+    /** Save a complex production / disassembly document (saveDocAdvProduction, 10.0). */
+    public function saveAdvProduction(ArrayPayload|array $payload): SaveDocResponse
+    {
+        return $this->save('saveDocAdvProduction', $payload);
+    }
+
+    /** Retrieve a complex production / disassembly document (raw, `adv_production`, 10.0). */
+    public function getAdvProduction(int $id): array
+    {
+        return $this->getDoc('getDocAdvProduction', $id);
+    }
+
+    /** Retrieve a complex production / disassembly document as a typed DTO (`adv_production`, 10.0). */
+    public function getAdvProductionTyped(int $id): AdvProductionDocDto
+    {
+        $data = $this->getDoc('getDocAdvProduction', $id);
+
+        return AdvProductionDocDto::fromArray((array) ($data['adv_production'] ?? []));
+    }
+
+    // ---- Customer order -> sale (10.0) ----
+
+    /**
+     * POST api/operation/fulfillmentCustomerOrder
+     * Request: {id (customer order operation id)}
+     * Response: {id (the sale FINA created from the order), ex}
+     */
+    public function fulfillCustomerOrder(CustomerOrderFulfillmentPayload|int $order): SaveDocResponse
+    {
+        return $this->save(
+            'fulfillmentCustomerOrder',
+            is_int($order) ? new CustomerOrderFulfillmentPayload($order) : $order
+        );
     }
 
     // ---- Received service docs (v8.0) ----

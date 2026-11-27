@@ -80,6 +80,8 @@ final class CafeOrderPayload implements ValidatesPayload
 
             // services may be empty
             'services' => ['present', 'array'],
+            // documented for saveDocProvidedService only; `missing` refuses an empty list too
+            'services.*.consumed_materials' => ['missing'],
         ];
     }
 

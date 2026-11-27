@@ -23,6 +23,7 @@ use Fina\Sdk\Laravel\Operation\Dto\GiftCardDto;
 use Fina\Sdk\Laravel\Operation\Dto\SaveDocResponse;
 use Fina\Sdk\Laravel\Operation\Dto\StaffDto;
 use Fina\Sdk\Laravel\Operation\Dto\StaffGroupDto;
+use Fina\Sdk\Laravel\Operation\Dto\StoreDto;
 use Fina\Sdk\Laravel\Operation\Dto\TransportationMeanDto;
 use Fina\Sdk\Laravel\Operation\Dto\UnitDto;
 use Fina\Sdk\Laravel\Operation\Dto\UserDto;
@@ -52,6 +53,36 @@ final class ReferenceApi extends BaseApi
     public function stores(): array
     {
         return $this->get('getStores', [], 'operation.getStores returned ex');
+    }
+
+    /**
+     * GET api/operation/getStores (typed, with `add_fields` from 10.0)
+     *
+     * @return StoreDto[]
+     */
+    public function storesTyped(): array
+    {
+        $data = $this->get('getStores', [], 'operation.getStores returned ex');
+
+        return array_map(
+            static fn ($s) => StoreDto::fromArray((array) $s),
+            array_values((array) ($data['stores'] ?? []))
+        );
+    }
+
+    /**
+     * GET api/operation/getStoreAdditionalFields (10.0)
+     *
+     * @return AdditionalFieldDescriptorDto[]
+     */
+    public function storeAdditionalFields(): array
+    {
+        $data = $this->get('getStoreAdditionalFields', [], 'operation.getStoreAdditionalFields returned ex');
+
+        return array_map(
+            static fn ($f) => AdditionalFieldDescriptorDto::fromArray((array) $f),
+            (array) ($data['fields'] ?? [])
+        );
     }
 
     /** GET api/operation/getProjects */
@@ -497,10 +528,11 @@ final class ReferenceApi extends BaseApi
     {
         $prefix = (string) config('fina.cache.prefix', 'fina-sdk');
 
-        // avoid collisions across envs/accounts
+        // avoid collisions across envs/accounts/tenants; the tenant is this client's, not the global config's
         $baseUrl = (string) config('fina.base_url', '');
         $login = (string) config('fina.login', '');
+        $tenantKey = $this->client->tenantKey();
 
-        return $prefix.':doc-types:'.sha1($baseUrl.'|'.$login);
+        return $prefix.':doc-types:'.sha1($baseUrl.'|'.$login.($tenantKey !== null ? '|'.$tenantKey : ''));
     }
 }

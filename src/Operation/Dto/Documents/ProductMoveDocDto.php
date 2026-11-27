@@ -10,7 +10,8 @@ namespace Fina\Sdk\Laravel\Operation\Dto\Documents;
 
 /**
  * Moves carry no currency: `amount` and every line's `self_cost` are cost
- * values; lines have no price.
+ * values; lines have no price. `waybill_status` (10.0.20261106) holds a
+ * {@see WaybillStatus} code; null when the FINA build does not send it.
  */
 final readonly class ProductMoveDocDto
 {
@@ -44,6 +45,7 @@ final readonly class ProductMoveDocDto
         public array $addFields,
         public array $products,
         public array $raw = [],
+        public ?int $waybillStatus = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -54,6 +56,7 @@ final readonly class ProductMoveDocDto
             numPfx: (string) ($data['num_pfx'] ?? ''),
             num: (int) ($data['num'] ?? 0),
             waybillNum: isset($data['waybill_num']) ? (string) $data['waybill_num'] : null,
+            waybillStatus: isset($data['waybill_status']) ? (int) $data['waybill_status'] : null,
             purpose: (string) ($data['purpose'] ?? ''),
             amount: (float) ($data['amount'] ?? 0.0),
             storeFrom: (int) ($data['store_from'] ?? 0),

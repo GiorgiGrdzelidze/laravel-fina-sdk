@@ -90,6 +90,8 @@ final class ReceivedServicePayload implements ValidatesPayload
             'services.*.id' => ['required', 'integer', 'min:1'],
             'services.*.quantity' => ['required', 'numeric', 'gt:0'],
             'services.*.price' => ['required', 'numeric', 'gte:0'],
+            // documented for saveDocProvidedService only; `missing` refuses an empty list too
+            'services.*.consumed_materials' => ['missing'],
         ];
     }
 
