@@ -11,10 +11,10 @@
         "client",
         "integration"
     ],
-    "homepage": "https://github.com/GiorgiGrdzelidze/fina-sdk-laravel",
+    "homepage": "https://github.com/GiorgiGrdzelidze/laravel-fina-sdk",
     "support": {
-        "issues": "https://github.com/GiorgiGrdzelidze/fina-sdk-laravel/issues",
-        "source": "https://github.com/GiorgiGrdzelidze/fina-sdk-laravel"
+        "issues": "https://github.com/GiorgiGrdzelidze/laravel-fina-sdk/issues",
+        "source": "https://github.com/GiorgiGrdzelidze/laravel-fina-sdk"
     },
     "authors": [
         {

@@ -1,12 +1,21 @@
 # FINA SDK for Laravel
 
-[![CI](https://github.com/GiorgiGrdzelidze/fina-sdk-laravel/actions/workflows/ci.yml/badge.svg)](https://github.com/GiorgiGrdzelidze/fina-sdk-laravel/actions/workflows/ci.yml)
-[![Latest Version](https://img.shields.io/github/v/release/GiorgiGrdzelidze/fina-sdk-laravel?label=release)](https://github.com/GiorgiGrdzelidze/fina-sdk-laravel/releases)
+[![CI](https://github.com/GiorgiGrdzelidze/laravel-fina-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/GiorgiGrdzelidze/laravel-fina-sdk/actions/workflows/ci.yml)
+[![Latest Version](https://img.shields.io/github/v/release/GiorgiGrdzelidze/laravel-fina-sdk?label=release)](https://github.com/GiorgiGrdzelidze/laravel-fina-sdk/releases)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-8892BF)](https://php.net)
 [![Laravel Version](https://img.shields.io/badge/laravel-%3E%3D12.0-FF2D20)](https://laravel.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A production-ready Laravel SDK for the **FINA Web API v10.0** (10.0.20261106). Handles authentication, token caching, typed DTOs, request validation, chunked reporting with deduplication, and structured error handling out of the box.
+
+| SDK release | FINA Web API it follows | What changed |
+|---|---|---|
+| **0.3.x** (current) | **10.0** (10.0.20261106) | all 154 documented methods: loyalty, advanced production, service consumption, customer order fulfilment; `waybill_status`, `ref_id`, `add_fields` on reads; `tenant_key`; token lifetime from `valid_to` |
+| 0.2.x | 8.0 (8.0.20260303) | all 138 documented methods, typed documents, write safety |
+| 0.1.2 – 0.1.3 | 8.0 | 18 endpoints new since 6.0 |
+| 0.1.0 – 0.1.1 | 6.0 | first release |
+
+What each release changed is in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -14,7 +23,7 @@ A production-ready Laravel SDK for the **FINA Web API v10.0** (10.0.20261106). H
 
 - [What's New in 0.3.0](#whats-new-in-030)
 - [What's New in 0.2.0](#whats-new-in-020)
-- [What's New in v8.0](#whats-new-in-v80)
+- [What's New in 0.1.2](#whats-new-in-012)
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -78,9 +87,9 @@ Not every FINA installation is on the latest build: endpoints added after your s
 
 ---
 
-## What's New in v8.0
+## What's New in 0.1.2
 
-This release adds **18 new endpoints** and expands several existing ones:
+This release adds **18 new endpoints** (those FINA added up to its API 8.0) and expands several existing ones:
 
 | Area | New Capabilities |
 |---|---|
@@ -137,7 +146,7 @@ If using as a local path repository:
 ```json
 {
     "repositories": [
-        { "type": "path", "url": "packages/fina/fina-sdk-laravel" }
+        { "type": "path", "url": "packages/fina/laravel-fina-sdk" }
     ]
 }
 ```
@@ -202,7 +211,7 @@ public function __construct(private FinaClient $fina) {}
 $stores   = $fina->reference()->stores();
 $users    = $fina->reference()->users();            // UserDto[]
 $docTypes = $fina->reference()->docTypesCached();    // cached 1h
-$vehicles = $fina->reference()->transportationMeans(); // v8.0
+$vehicles = $fina->reference()->transportationMeans(); // since 0.1.2
 ```
 
 ### Save a document
@@ -264,7 +273,7 @@ Access via `$fina->customers()`.
 | `subAccounts()` | `getCustomerSubAccounts` | `ContragentSubAccountDto[]` |
 | `save($payload)` | `saveCustomer` (POST) | `SaveDocResponse` (payload: `ContragentPayload` or array) |
 
-> `agreements()`, `subAccountFields()`, `subAccounts()` are new in v8.0; `allTyped()`, `getByCodeTyped()` (with `birthDate`, `marketingPromotions`) in 0.3.0.
+> `agreements()`, `subAccountFields()`, `subAccounts()` came in 0.1.2; `allTyped()`, `getByCodeTyped()` (with `birthDate`, `marketingPromotions`) in 0.3.0.
 
 ### Vendors
 
@@ -282,7 +291,7 @@ Access via `$fina->vendors()`.
 | `subAccounts()` | `getVendorSubAccounts` | `ContragentSubAccountDto[]` |
 | `save($payload)` | `saveVendor` (POST) | `SaveDocResponse` (payload: `ContragentPayload` or array) |
 
-> `subAccounts()` is new in v8.0; `allTyped()`, `getByCodeTyped()` in 0.3.0.
+> `subAccounts()` came in 0.1.2; `allTyped()`, `getByCodeTyped()` in 0.3.0.
 
 ### Products
 
@@ -375,7 +384,7 @@ Access via `$fina->reference()`.
 | `storeAdditionalFields()` | `AdditionalFieldDescriptorDto[]` (`getStoreAdditionalFields`) |
 | `saveStaff($payload)` | `SaveDocResponse` (POST `saveStaff`) |
 
-> `transportationMeans()` and `accountValueDetails()` are new in v8.0; `storesTyped()` and `storeAdditionalFields()` in 0.3.0.
+> `transportationMeans()` and `accountValueDetails()` came in 0.1.2; `storesTyped()` and `storeAdditionalFields()` in 0.3.0.
 
 ### Services
 
@@ -428,7 +437,7 @@ Access via `$fina->loyalty()`.
 | `saveGroup($payload)` | `saveLoyaltyGroup` | `SaveDocResponse` (payload: `LoyaltyGroupPayload`) |
 | `saveBonusPoint($payload)` | `saveLoyaltyBonusPoint` | `SaveDocResponse` (payload: `LoyaltyBonusPointPayload`) |
 
-> `giftCardInfoByCode()` and `bonusCardRestByCode()` are new in v8.0. The loyalty (Cloud) methods from `customers()` down and `saveDiscountOperation()` are new in 0.3.0 (API 10.0). In `saveLoyaltyCustomer` a non-null `loyaltyPrograms` / `loyaltyGroups` becomes the card's whole list (FINA inserts, updates and deletes to match); leave them null to keep what the card has. A card from `customers()` has them `null` (the list does not send them), so passing them on keeps the card's lists; `customer($id)` carries them. `saveDocDiscountOperation` answers `{res, ex}` per the document; `DiscountOperationResponse::$res` is `null` when the answer has no `res` (unknown, not a refusal: do not send the operation again on it), and `$raw` keeps the whole answer.
+> `giftCardInfoByCode()` and `bonusCardRestByCode()` came in 0.1.2. The loyalty (Cloud) methods from `customers()` down and `saveDiscountOperation()` are new in 0.3.0 (API 10.0). In `saveLoyaltyCustomer` a non-null `loyaltyPrograms` / `loyaltyGroups` becomes the card's whole list (FINA inserts, updates and deletes to match); leave them null to keep what the card has. A card from `customers()` has them `null` (the list does not send them), so passing them on keeps the card's lists; `customer($id)` carries them. `saveDocDiscountOperation` answers `{res, ex}` per the document; `DiscountOperationResponse::$res` is `null` when the answer has no `res` (unknown, not a refusal: do not send the operation again on it), and `$raw` keeps the whole answer.
 
 ### Documents
 
@@ -464,7 +473,7 @@ Access via `$fina->documents()`.
 | `fulfillCustomerOrder($orderId)` | `fulfillmentCustomerOrder` | `int` or `CustomerOrderFulfillmentPayload`; `->id` is the sale FINA made from the order |
 | `updateRsStatus($operationId, $waybillId, $waybillStatus, $waybillNum)` | `updateRsStatus` | returns `RsStatusResponse` |
 
-> `saveReceivedService`, `saveBonusCard`, `saveGiftPayment` are new in v8.0; `saveAdvProduction`, `fulfillCustomerOrder` and `DiscountCardPayload` in 0.3.0. `ProductOutPayload::$giftOverlap` 1 is refused unless `payType` is 5 (free of charge), the only pay type the document says it acts on; 0 is accepted on any pay type, as the document's own example sends it with pay type 1, and null is not sent. `ServiceLine::$consumedMaterials` is accepted on `ProvidedServicePayload` only; the sale, received-service and cafe payloads refuse it, an empty list included. `saveCustomerMoneyOut`, `saveVendorMoneyIn`, `saveVendorMoneyOut`, `saveVendorMoneyReturn` are **not documented** in the 8.0 PDF; they are kept for compatibility but unverified.
+> `saveReceivedService`, `saveBonusCard`, `saveGiftPayment` came in 0.1.2; `saveAdvProduction`, `fulfillCustomerOrder` and `DiscountCardPayload` in 0.3.0. `ProductOutPayload::$giftOverlap` 1 is refused unless `payType` is 5 (free of charge), the only pay type the document says it acts on; 0 is accepted on any pay type, as the document's own example sends it with pay type 1, and null is not sent. `ServiceLine::$consumedMaterials` is accepted on `ProvidedServicePayload` only; the sale, received-service and cafe payloads refuse it, an empty list included. `saveCustomerMoneyOut`, `saveVendorMoneyIn`, `saveVendorMoneyOut`, `saveVendorMoneyReturn` are **not documented** in the 8.0 PDF; they are kept for compatibility but unverified.
 
 **Get methods** -- return raw arrays or typed DTOs:
 
@@ -534,7 +543,7 @@ Access via `$fina->reporting()`.
 | Moves | `movesJournal()` | `movesJournalTyped()` | `movesJournalChunkedTyped()` | `MovesJournalResponseDto` |
 | Auto Services Out | `autoServicesOutJournal()` | `autoServicesOutJournalTyped()` | `autoServicesOutJournalChunkedTyped()` | `AutoServicesOutJournalResponseDto` |
 
-> Auto Services Out is new in v8.0. Realizes and Customers Money rows carry `refId` (10.0): the customer order a sale was made from, or the FINA operation money was received or returned for; 0 when none, `null` when your build does not send it (the vendors money journal never does).
+> Auto Services Out came in 0.1.2. Realizes and Customers Money rows carry `refId` (10.0): the customer order a sale was made from, or the FINA operation money was received or returned for; 0 when none, `null` when your build does not send it (the vendors money journal never does).
 
 **Reports:**
 
@@ -546,7 +555,7 @@ Access via `$fina->reporting()`.
 | Products In/Return | `productsInReturnReport()` | `productsInReturnReportTyped()` | `ProductsInReturnReportResponseDto` |
 | Cafe Order Detailed | `cafeOrderDetailedReport()` | `cafeOrderDetailedReportTyped()` | `CafeOrderDetailedReportResponseDto` |
 
-> Cafe Order Detailed is new in v8.0; its rows carry `userId` (the waiter) and `guestCount` from 10.0.
+> Cafe Order Detailed came in 0.1.2; its rows carry `userId` (the waiter) and `guestCount` from 10.0.
 
 **Low-level Journals API** -- access via `$fina->journals()` for simple date-range queries:
 
@@ -555,7 +564,7 @@ $fina->journals()->entries($from, $to);
 $fina->journals()->realizes($from, $to);
 $fina->journals()->moves($from, $to);
 $fina->journals()->customersOrders($from, $to);
-$fina->journals()->autoServicesOut($from, $to); // v8.0
+$fina->journals()->autoServicesOut($from, $to); // since 0.1.2
 ```
 
 **Generic range call:**
@@ -663,14 +672,14 @@ foreach ($dto->journals as $row) {
 | `StaffAdditionalFieldDto` | Staff field key-value |
 | `DiscountTypeDto` | Discount type with percent |
 | `UnitDto` | Measurement unit |
-| `GiftCardDto` | Gift card (includes `restAmount` in v8.0) |
-| `GiftCardInfoDto` | Detailed gift card info by code (v8.0) |
-| `CustomerAgreementDto` | Customer price agreement (v8.0) |
-| `ContragentSubAccountFieldDto` | Sub-account field definition (v8.0) |
-| `ContragentSubAccountDto` | Contragent sub-account data (v8.0) |
-| `TransportationMeanDto` | Vehicle/transportation mean (v8.0) |
-| `AccountValueDetailDto` | Account debit/credit detail (v8.0) |
-| `AutoServiceDocDto` | Full auto-service document (v8.0) |
+| `GiftCardDto` | Gift card (includes `restAmount` since 0.1.2) |
+| `GiftCardInfoDto` | Detailed gift card info by code (since 0.1.2) |
+| `CustomerAgreementDto` | Customer price agreement (since 0.1.2) |
+| `ContragentSubAccountFieldDto` | Sub-account field definition (since 0.1.2) |
+| `ContragentSubAccountDto` | Contragent sub-account data (since 0.1.2) |
+| `TransportationMeanDto` | Vehicle/transportation mean (since 0.1.2) |
+| `AccountValueDetailDto` | Account debit/credit detail (since 0.1.2) |
+| `AutoServiceDocDto` | Full auto-service document (since 0.1.2) |
 | `ProductionDocDto` | Production document with materials |
 | `ProductOutDocDto` | Sale document (type 21) with `checkStatus`, typed lines |
 | `ProductOutSingleDocDto` | Retail sale document (type 23) |
@@ -714,10 +723,10 @@ foreach ($dto->journals as $row) {
 | `VendorMoneyOutPayload` | Yes | Vendor money out |
 | `VendorMoneyReturnPayload` | Yes | Vendor money return |
 | `ProductionPayload` | Yes | Production (legacy format) |
-| `ReceivedServicePayload` | Yes | Received service (v8.0) |
-| `BonusCardPayload` | Yes | Bonus card issuance (v8.0) |
-| `GiftPaymentPayload` | Yes | Gift card payment (v8.0) |
-| `SaveProductionPayload` | Yes | Production with product tree (v8.0) |
+| `ReceivedServicePayload` | Yes | Received service (since 0.1.2) |
+| `BonusCardPayload` | Yes | Bonus card issuance (since 0.1.2) |
+| `GiftPaymentPayload` | Yes | Gift card payment (since 0.1.2) |
+| `SaveProductionPayload` | Yes | Production with product tree (since 0.1.2) |
 | `AdvProductionPayload` | Yes | Complex production / disassembly (0.3.0) |
 | `CustomerOrderFulfillmentPayload` | Yes | Customer order to sale (0.3.0) |
 | `DiscountOperationPayload` | Yes | Discount card on a sale (0.3.0) |
@@ -740,8 +749,8 @@ foreach ($dto->journals as $row) {
 | `CafeOrderProductLine` | Cafe order |
 | `CustomerOrderProduct` | Customer order |
 | `AddField` | Additional custom fields |
-| `ProductionChildLine` | Production child product (v8.0) |
-| `ProductionProductLine` | Production product with children (v8.0) |
+| `ProductionChildLine` | Production child product (since 0.1.2) |
+| `ProductionProductLine` | Production product with children (since 0.1.2) |
 | `ProductionMaterialLineDto` | Production material |
 | `ProductionConsumedLineDto` | Consumed material |
 | `ProductionExpenseLineDto` | Production expense |
@@ -836,12 +845,12 @@ composer ci
 | `ReportingChunkingTest` | 7 | | Chunk merge, deduplication, typed output |
 | `DtoValidationTest` | 6 | | Valid/invalid payloads, nested validation |
 | `DtoMappingTest` | 14 | | DTO mapping, empty data, roundtrip |
-| `NewEndpointsTest` | 19 | | All v8.0 endpoints (HTTP mocked) |
-| `NewDtoMappingTest` | 13 | | All v8.0 DTO mapping + edge cases |
-| `NewDtoValidationTest` | 8 | | v8.0 payload validation (valid + invalid) |
-| `PdfOperationEndpointsTest` | 63 | | 8.0 operation endpoints: verb, path, body, `ex` |
-| `PdfJournalFixturesTest` | 16 | | Every journal and report fed with the 8.0 examples |
-| `TypedDocumentsTest` | 7 | | Typed getDoc* DTOs from the 8.0 examples |
+| `NewEndpointsTest` | 19 | | The endpoints added in 0.1.2 (HTTP mocked) |
+| `NewDtoMappingTest` | 13 | | DTO mapping of the 0.1.2 additions + edge cases |
+| `NewDtoValidationTest` | 8 | | Payload validation of the 0.1.2 additions (valid + invalid) |
+| `PdfOperationEndpointsTest` | 63 | | Operation endpoints: verb, path, body, `ex` |
+| `PdfJournalFixturesTest` | 16 | | Every journal and report fed with the documentation's examples |
+| `TypedDocumentsTest` | 7 | | Typed getDoc* DTOs from the documentation's examples |
 | `RestAndRetailDocTest` | 9 | | Product rest and retail documents |
 | `WriteSafetyTest` | 18 | | Writes never repeated by the transport (incl. 10.0 writes), refusals before sending |
 | `PdfParityTest` | 3 | | Every method of the 10.0 table of contents is referenced in `src/` |
