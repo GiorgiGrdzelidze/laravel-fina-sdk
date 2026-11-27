@@ -14,7 +14,7 @@ If you discover a security vulnerability in this package, please report it respo
 
 Instead, please email the maintainer directly at:
 
-**giorgi.grdzelidze@gmail.com**
+**grdzelog@gmail.com**
 
 Include:
 
